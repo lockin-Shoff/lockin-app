@@ -1,0 +1,9 @@
+{
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://pstpsecablgrcljutggj.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdHBzZWNhYmxncmNsanV0Z2dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTgwMDcsImV4cCI6MjA5NzA3NDAwN30.smgJVCnFhUlGs9fkqZ-UjweN1Bd4tc8MgT48RDOpXvY"
+  }
+}
