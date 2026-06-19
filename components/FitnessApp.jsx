@@ -1009,11 +1009,12 @@ export default function App({user,supabase}){
   async function saveProfile(p,g,cg,mac){
     if(!user||!supabase)return;
     var payload={id:user.id,display_name:p.name||"",username:p.name||"",bio:p.bio||"",avatar_index:p.avatar||0,age:p.age?+p.age:null,sex:p.sex||"male",weight_lbs:p.wLbs?+p.wLbs:null,height_ft:p.hFt?+p.hFt:null,height_in:p.hIn?+p.hIn:null,activity_level:p.activ||"moderate",goal:g||goal,cal_goal:cg||calGoal,macro_protein:mac?mac.protein:macros.protein,macro_carbs:mac?mac.carbs:macros.carbs,macro_fat:mac?mac.fat:macros.fat,updated_at:new Date().toISOString()};
+    console.log("SAVING PROFILE:",payload);
     try{
-      var{error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"});
-      if(error){console.log("Save error:",error.message);}
+      var{data:saved,error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"}).select();
+      if(error){console.log("SAVE ERROR:",error.message,error.code,error.details);}
       else{
-        // Also cache locally for instant load
+        console.log("SAVE SUCCESS:",saved);
         try{
           localStorage.setItem("lockin_profile_"+user.id,JSON.stringify({
             name:p.name,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
@@ -1021,9 +1022,10 @@ export default function App({user,supabase}){
             goal:g||goal,calGoal:cg||calGoal,
             macros:mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat},
           }));
-        }catch(e){}
+          console.log("LOCALSTORAGE SAVED");
+        }catch(e){console.log("LOCALSTORAGE ERROR:",e);}
       }
-    }catch(e){console.log("Save exception:",e);}
+    }catch(e){console.log("SAVE EXCEPTION:",e);}
   }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
