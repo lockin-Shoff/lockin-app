@@ -217,63 +217,155 @@ function MuscleDiagram({exerciseName,color}){
     var t=setInterval(function(){setPulsePhase(function(p){return(p+1)%60;});},40);
     return function(){clearInterval(t);};
   },[exerciseName]);
-  var pulse=0.12*Math.sin((pulsePhase/60)*2*Math.PI);
-  var bodyFront=["M14,28 Q27,24 40,28 L40,72 Q27,75 14,72 Z","M4,28 Q10,26 14,30 L13,66 Q8,68 3,65 Z","M40,28 Q46,26 50,30 L49,66 Q44,68 39,65 Z","M3,64 Q7,62 12,65 L11,92 Q6,93 2,90 Z","M40,64 Q44,62 49,65 L48,92 Q43,93 39,90 Z","M14,72 Q22,70 27,72 L26,110 Q20,112 13,110 Z","M27,72 Q32,70 40,72 L39,110 Q33,112 26,110 Z","M13,108 Q20,106 26,108 L25,145 Q19,147 12,145 Z","M26,108 Q32,106 39,108 L38,145 Q32,147 25,145 Z"];
-  var bodyBack=["M64,28 Q77,24 90,28 L90,72 Q77,75 64,72 Z","M54,28 Q60,26 64,30 L63,66 Q58,68 53,65 Z","M90,28 Q96,26 100,30 L99,66 Q94,68 89,65 Z","M53,64 Q57,62 62,65 L61,92 Q56,93 52,90 Z","M90,64 Q94,62 99,65 L98,92 Q93,93 89,90 Z","M64,72 Q72,70 77,72 L76,110 Q70,112 63,110 Z","M77,72 Q82,70 90,72 L89,110 Q83,112 76,110 Z","M63,108 Q70,106 76,108 L75,145 Q69,147 62,145 Z","M76,108 Q82,106 89,108 L88,145 Q82,147 75,145 Z"];
+  var pulse=0.15*Math.sin((pulsePhase/60)*2*Math.PI);
+  var sk1="#c4845a",sk2="#b87348",sk3="#d4956a";
+  var fb=[
+    {d:"M16,28 Q20,25 27,24 Q34,25 38,28 L39,52 Q35,56 27,57 Q19,56 15,52 Z",f:sk2},
+    {d:"M17,30 Q23,28 27,29 Q31,28 37,30 L36,42 Q31,44 27,44 Q23,44 18,42 Z",f:sk1},
+    {d:"M20,52 Q27,50 34,52 L33,72 Q27,74 21,72 Z",f:sk1},
+    {d:"M5,28 Q10,25 15,28 L14,50 Q9,53 4,50 Z",f:sk2},
+    {d:"M39,28 Q44,25 49,28 L48,50 Q43,53 38,50 Z",f:sk2},
+    {d:"M3,49 Q7,47 13,50 L12,78 Q7,80 2,77 Z",f:sk3},
+    {d:"M39,49 Q45,47 49,50 L48,78 Q43,80 38,77 Z",f:sk3},
+    {d:"M2,76 Q7,74 12,76 L11,88 Q6,90 1,87 Z",f:sk3},
+    {d:"M38,76 Q43,74 48,76 L47,88 Q42,90 37,87 Z",f:sk3},
+    {d:"M15,55 Q27,53 39,55 L38,70 Q27,72 16,70 Z",f:sk2},
+    {d:"M14,68 Q20,66 26,68 L25,108 Q19,111 13,108 Z",f:sk2},
+    {d:"M28,68 Q34,66 40,68 L39,108 Q33,111 27,108 Z",f:sk2},
+    {d:"M14,104 Q20,102 26,104 L25,116 Q19,118 13,116 Z",f:sk3},
+    {d:"M28,104 Q34,102 40,104 L39,116 Q33,118 27,116 Z",f:sk3},
+    {d:"M13,114 Q19,112 25,114 L24,142 Q18,144 12,142 Z",f:sk2},
+    {d:"M27,114 Q33,112 39,114 L38,142 Q32,144 26,142 Z",f:sk2},
+    {d:"M19,2 Q27,-1 35,2 Q39,6 39,13 Q39,21 27,23 Q15,21 15,13 Q15,6 19,2 Z",f:sk1},
+    {d:"M22,22 Q27,21 32,22 L31,28 Q27,29 23,28 Z",f:sk2},
+  ];
+  var bb=[
+    {d:"M66,28 Q70,25 77,24 Q84,25 88,28 L89,52 Q85,56 77,57 Q69,56 65,52 Z",f:sk2},
+    {d:"M67,30 Q73,27 77,28 Q81,27 87,30 L86,50 Q81,52 77,52 Q73,52 68,50 Z",f:sk1},
+    {d:"M70,52 Q77,50 84,52 L83,72 Q77,74 71,72 Z",f:sk1},
+    {d:"M55,28 Q60,25 65,28 L64,50 Q59,53 54,50 Z",f:sk2},
+    {d:"M89,28 Q94,25 99,28 L98,50 Q93,53 88,50 Z",f:sk2},
+    {d:"M53,49 Q57,47 63,50 L62,78 Q57,80 52,77 Z",f:sk3},
+    {d:"M89,49 Q95,47 99,50 L98,78 Q93,80 88,77 Z",f:sk3},
+    {d:"M52,76 Q57,74 62,76 L61,88 Q56,90 51,87 Z",f:sk3},
+    {d:"M88,76 Q93,74 98,76 L97,88 Q92,90 87,87 Z",f:sk3},
+    {d:"M65,55 Q77,53 89,55 L88,70 Q77,72 66,70 Z",f:sk2},
+    {d:"M64,68 Q70,66 76,68 L75,108 Q69,111 63,108 Z",f:sk2},
+    {d:"M78,68 Q84,66 90,68 L89,108 Q83,111 77,108 Z",f:sk2},
+    {d:"M64,104 Q70,102 76,104 L75,116 Q69,118 63,116 Z",f:sk3},
+    {d:"M78,104 Q84,102 90,104 L89,116 Q83,118 77,116 Z",f:sk3},
+    {d:"M63,114 Q69,112 75,114 L74,142 Q68,144 62,142 Z",f:sk2},
+    {d:"M77,114 Q83,112 89,114 L88,142 Q82,144 76,142 Z",f:sk2},
+    {d:"M69,2 Q77,-1 85,2 Q89,6 89,13 Q89,21 77,23 Q65,21 65,13 Q65,6 69,2 Z",f:sk1},
+    {d:"M72,22 Q77,21 82,22 L81,28 Q77,29 73,28 Z",f:sk2},
+  ];
+  var AF={
+    "Pec Major (Sternal)":"M18,32 Q27,29 36,32 L35,44 Q27,47 19,44 Z",
+    "Pec Major (Clavicular)":"M18,29 Q27,27 36,29 L35,35 Q27,36 19,35 Z",
+    "Pec Minor":"M21,34 Q27,32 33,34 L32,43 Q27,44 22,43 Z",
+    "Serratus Anterior":"M15,38 Q18,36 20,40 L18,52 Q15,53 13,50 Z M37,38 Q40,36 39,40 L41,52 Q39,53 37,50 Z",
+    "Ant Deltoid":"M7,28 Q12,24 16,28 L15,40 Q10,43 6,39 Z M38,28 Q43,24 47,28 L46,40 Q41,43 37,39 Z",
+    "Mid Deltoid":"M4,36 Q8,32 12,36 L11,48 Q6,51 3,47 Z M42,36 Q46,32 50,36 L49,48 Q44,51 41,47 Z",
+    "Bicep Long Head":"M5,42 Q8,40 11,42 L10,58 Q7,60 4,58 Z M43,42 Q46,40 49,42 L48,58 Q45,60 42,58 Z",
+    "Bicep Short Head":"M8,42 Q11,40 13,43 L12,58 Q9,60 7,58 Z M41,42 Q44,40 46,43 L45,58 Q42,60 40,58 Z",
+    "Brachialis":"M5,56 Q9,54 12,57 L11,65 Q8,67 5,64 Z M42,56 Q46,54 49,57 L48,65 Q45,67 42,64 Z",
+    "Brachioradialis":"M4,63 Q8,61 11,64 L10,78 Q7,80 3,77 Z M43,63 Q47,61 50,64 L49,78 Q46,80 42,77 Z",
+    "Flex Carpi Radialis":"M4,77 Q7,75 10,77 L9,87 Q6,88 3,86 Z M44,77 Q47,75 50,77 L49,87 Q46,88 43,86 Z",
+    "Flex Carpi Ulnaris":"M2,77 Q5,75 7,78 L6,87 Q3,88 1,86 Z M47,77 Q50,75 52,78 L51,87 Q48,88 46,86 Z",
+    "Palmaris Longus":"M5,78 Q7,76 9,78 L8,87 Q6,88 5,87 Z M45,78 Q47,76 49,78 L48,87 Q46,88 45,87 Z",
+    "Pronator Teres":"M6,62 Q10,60 13,63 L12,70 Q9,72 6,69 Z M41,62 Q45,60 48,63 L47,70 Q44,72 41,69 Z",
+    "Flex Digitorum":"M3,86 Q6,84 10,86 L9,94 Q6,96 2,93 Z M44,86 Q47,84 51,86 L50,94 Q47,96 43,93 Z",
+    "Rectus Abdominis":"M21,52 Q27,50 33,52 L32,70 Q27,72 22,70 Z",
+    "Obliques":"M14,52 Q19,50 21,54 L20,70 Q16,72 13,68 Z M33,52 Q38,50 40,54 L39,70 Q36,72 34,68 Z",
+    "Transverse Abdominis":"M20,60 Q27,58 34,60 L33,70 Q27,71 21,70 Z",
+    "Hip Flexors":"M18,68 Q27,66 36,68 L35,76 Q27,78 19,76 Z",
+    "Quad (Rectus Femoris)":"M20,70 Q24,68 28,70 L27,106 Q23,108 19,106 Z",
+    "Quad (Vastus Lat)":"M15,72 Q20,70 23,74 L22,108 Q17,111 13,108 Z M31,72 Q36,70 39,74 L38,108 Q33,111 29,108 Z",
+    "Quad (Vastus Med)":"M23,88 Q27,86 31,88 L30,110 Q26,112 22,110 Z",
+    "Quad (Vastus Int)":"M21,72 Q25,70 29,72 L28,106 Q24,108 20,106 Z",
+    "Adductor Magnus":"M22,70 Q27,68 32,70 L31,102 Q27,104 23,102 Z",
+    "Gastrocnemius (Med)":"M19,114 Q23,112 27,114 L26,132 Q22,134 18,131 Z M27,114 Q31,112 35,114 L34,132 Q30,134 26,131 Z",
+    "Gastrocnemius (Lat)":"M14,116 Q18,114 21,118 L20,134 Q15,136 12,133 Z M33,116 Q37,114 40,118 L39,134 Q34,136 31,133 Z",
+    "Soleus":"M16,128 Q22,126 32,126 L31,142 Q22,144 15,142 Z",
+    "Tibialis Anterior":"M13,114 Q16,112 19,116 L18,132 Q14,134 12,131 Z M35,114 Q38,112 41,116 L40,132 Q36,134 34,131 Z",
+  };
+  var AB={
+    "Trap (Upper)":"M62,26 Q77,22 92,26 L91,36 Q77,38 63,36 Z",
+    "Trap (Mid)":"M63,36 Q77,38 91,36 L90,50 Q77,52 64,50 Z",
+    "Lower Trap":"M65,50 Q77,52 89,50 L88,60 Q77,62 66,60 Z",
+    "Rhomboids":"M67,34 Q77,30 87,34 L86,52 Q77,54 68,52 Z",
+    "Lat Dorsi":"M60,40 Q66,35 70,42 L68,70 Q62,73 57,67 Z M94,40 Q88,35 84,42 L86,70 Q92,73 97,67 Z",
+    "Teres Major":"M60,38 Q65,33 69,38 L68,50 Q63,52 58,48 Z M94,38 Q89,33 85,38 L86,50 Q91,52 96,48 Z",
+    "Teres Minor":"M60,32 Q64,28 68,33 L67,40 Q62,43 59,40 Z M94,32 Q90,28 86,33 L87,40 Q92,43 95,40 Z",
+    "Infraspinatus":"M64,30 Q77,26 90,30 L89,43 Q77,45 65,43 Z",
+    "Erector Spinae":"M73,34 Q75,32 77,34 L76,70 Q74,72 72,70 Z M79,34 Q81,32 83,34 L82,70 Q80,72 78,70 Z",
+    "Post Deltoid":"M56,30 Q61,25 65,32 L64,44 Q58,47 54,43 Z M98,30 Q93,25 89,32 L90,44 Q96,47 100,43 Z",
+    "Glute Max":"M63,72 Q77,68 91,72 L90,94 Q77,98 64,94 Z",
+    "Glute Med":"M60,62 Q70,58 77,62 L76,76 Q68,79 59,75 Z M94,62 Q84,58 77,62 L78,76 Q86,79 95,75 Z",
+    "Glute Min":"M63,66 Q70,62 77,66 L76,76 Q69,79 62,75 Z M91,66 Q84,62 77,66 L78,76 Q85,79 92,75 Z",
+    "TFL":"M60,68 Q65,63 69,70 L68,83 Q62,86 58,81 Z M94,68 Q89,63 85,70 L86,83 Q92,86 96,81 Z",
+    "Bicep Femoris (Long)":"M79,94 Q84,91 88,94 L87,122 Q83,125 79,122 Z M66,94 Q62,91 58,94 L59,122 Q63,125 67,122 Z",
+    "Bicep Femoris (Short)":"M79,108 Q83,106 87,108 L86,124 Q83,127 79,124 Z M65,108 Q61,106 57,108 L58,124 Q62,127 66,124 Z",
+    "Semimembranosus":"M73,94 Q77,91 81,94 L80,122 Q76,125 72,122 Z",
+    "Semitendinosus":"M68,94 Q72,91 76,94 L75,122 Q71,125 67,122 Z",
+    "Tricep Long Head":"M55,42 Q59,39 62,43 L61,63 Q57,65 54,62 Z M99,42 Q95,39 92,43 L93,63 Q97,65 100,62 Z",
+    "Tricep Lateral Head":"M52,44 Q56,41 59,45 L58,63 Q54,65 51,62 Z M102,44 Q98,41 95,45 L96,63 Q100,65 103,62 Z",
+    "Tricep Medial Head":"M55,52 Q58,50 61,53 L60,63 Q57,64 54,62 Z M99,52 Q96,50 93,53 L94,63 Q97,64 100,62 Z",
+    "Supraspinatus":"M65,26 Q77,22 89,26 L88,34 Q77,36 66,34 Z",
+    "Levator Scapulae":"M65,22 Q68,20 71,24 L70,34 Q67,36 64,33 Z M89,22 Q86,20 83,24 L84,34 Q87,36 90,33 Z",
+    "Ext Carpi Ulnaris":"M51,60 Q55,57 58,61 L57,76 Q53,78 50,75 Z M103,60 Q99,57 96,61 L97,76 Q101,78 104,75 Z",
+    "Gastrocnemius (Med)_back":"M73,124 Q76,122 80,124 L79,144 Q75,147 72,144 Z",
+    "Gastrocnemius (Lat)_back":"M67,124 Q71,122 74,124 L73,144 Q69,147 66,144 Z M80,124 Q84,122 87,124 L86,144 Q82,147 79,144 Z",
+    "Soleus_back":"M67,138 Q77,136 87,136 L86,150 Q77,152 68,150 Z",
+  };
+  var rm=function(isBack){
+    return muscles.map(function(m){
+      var isBM=BACK_VIEW_MUSCLES.has(m);
+      if(isBack&&!isBM)return null;
+      if(!isBack&&isBM)return null;
+      var pd=isBack?(AB[m]||AB[m+"_back"]):(AF[m]);
+      if(!pd)return null;
+      var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
+      var op=(0.6+(pct/100)*0.35)+(isPrimary?pulse*0.2:0);
+      var gs=isPrimary?{filter:"blur(3px)"}:{};
+      return <g key={m}>{isPrimary&&<path d={pd} fill={col} opacity={0.2+Math.max(0,pulse)*0.3} style={gs}/>}<path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth="0.3" strokeOpacity="0.3"/>{isPrimary&&<path d={pd} fill="url(#spec)" opacity="0.2"/>}</g>;
+    });
+  };
   return(
-    <div style={{background:"linear-gradient(160deg,#0e0e18,#0a0a0f)",borderRadius:16,padding:"16px",marginBottom:10,border:"1px solid #1e1e2a",boxShadow:"0 4px 24px rgba(0,0,0,0.5)"}}>
+    <div style={{background:"linear-gradient(160deg,#0e0e18,#080810)",borderRadius:16,padding:"16px",marginBottom:10,border:"1px solid #1e1e2a",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
       <div style={{fontSize:9,color:"#555",letterSpacing:1.5,marginBottom:12,textAlign:"center"}}>MUSCLE ACTIVATION BREAKDOWN</div>
-      <div style={{display:"flex",justifyContent:"center",gap:20,marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"center",gap:24,marginBottom:14}}>
         <div style={{textAlign:"center"}}>
-          <div style={{fontSize:8,color:"#444",marginBottom:4,letterSpacing:1}}>FRONT</div>
-          <svg viewBox="0 0 54 155" width="76" height="215" style={{overflow:"visible"}}>
+          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>FRONT</div>
+          <svg viewBox="0 0 54 155" width="80" height="225" style={{overflow:"visible",filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.8))"}}>
             <defs>
-              <linearGradient id="bodyGradF" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#161622"/><stop offset="40%" stopColor="#222230"/><stop offset="100%" stopColor="#12121c"/></linearGradient>
-              <linearGradient id="specF" x1="0%" y1="0%" x2="60%" y2="80%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0.4"/><stop offset="100%" stopColor="#ffffff" stopOpacity="0"/></linearGradient>
-              {muscles.filter(function(m){return!BACK_VIEW_MUSCLES.has(m);}).map(function(m){var col=MUSCLE_COLOR[m]||GC;return(<radialGradient key={"gF"+m} id={"glowF_"+m.replace(/[^a-z0-9]/gi,"_")} cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={col} stopOpacity="0.9"/><stop offset="70%" stopColor={col} stopOpacity="0.5"/><stop offset="100%" stopColor={col} stopOpacity="0.1"/></radialGradient>);})}
+              <linearGradient id="bgl" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.12"/><stop offset="100%" stopColor="#000" stopOpacity="0.2"/></linearGradient>
+              <linearGradient id="spec" x1="0%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.4"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></linearGradient>
             </defs>
-            {bodyFront.map(function(d,i){return <path key={i} d={d} fill="url(#bodyGradF)" stroke="#2a2a3c" strokeWidth="0.7"/>;}) }
-            <ellipse cx="27" cy="12" rx="11" ry="12" fill="url(#bodyGradF)" stroke="#2a2a3c" strokeWidth="0.7"/>
-            <line x1="27" y1="28" x2="27" y2="72" stroke="#1a1a28" strokeWidth="0.5" opacity="0.6"/>
-            {muscles.map(function(m){
-              if(BACK_VIEW_MUSCLES.has(m))return null;
-              var path=SVG_PATHS[m];if(!path)return null;
-              var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
-              var animOpacity=(0.35+(pct/100)*0.55)+(isPrimary?pulse:0);
-              var glowId="glowF_"+m.replace(/[^a-z0-9]/gi,"_");
-              return(<g key={m}>{isPrimary&&<path d={path} fill={"url(#"+glowId+")"} opacity={0.18+Math.max(0,pulse)*0.5} style={{filter:"blur(2px)"}}/>}<path d={path} fill={col} opacity={animOpacity} stroke={col} strokeWidth={isPrimary?"0.6":"0.3"} strokeOpacity="0.8"/><path d={path} fill="url(#specF)" opacity="0.15"/></g>);
-            })}
+            {fb.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.4" strokeOpacity="0.6"/>;})}
+            {fb.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bgl)" opacity="0.7"/>;})}
+            {rm(false)}
           </svg>
         </div>
         <div style={{textAlign:"center"}}>
-          <div style={{fontSize:8,color:"#444",marginBottom:4,letterSpacing:1}}>BACK</div>
-          <svg viewBox="54 0 54 155" width="76" height="215" style={{overflow:"visible"}}>
+          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>BACK</div>
+          <svg viewBox="54 0 54 155" width="80" height="225" style={{overflow:"visible",filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.8))"}}>
             <defs>
-              <linearGradient id="bodyGradB" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#12121c"/><stop offset="60%" stopColor="#222230"/><stop offset="100%" stopColor="#161622"/></linearGradient>
-              <linearGradient id="specB" x1="100%" y1="0%" x2="40%" y2="80%"><stop offset="0%" stopColor="#ffffff" stopOpacity="0.35"/><stop offset="100%" stopColor="#ffffff" stopOpacity="0"/></linearGradient>
-              {muscles.filter(function(m){return BACK_VIEW_MUSCLES.has(m);}).map(function(m){var col=MUSCLE_COLOR[m]||GC;return(<radialGradient key={"gB"+m} id={"glowB_"+m.replace(/[^a-z0-9]/gi,"_")} cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={col} stopOpacity="0.9"/><stop offset="70%" stopColor={col} stopOpacity="0.5"/><stop offset="100%" stopColor={col} stopOpacity="0.1"/></radialGradient>);})}
+              <linearGradient id="bgr" x1="80%" y1="0%" x2="20%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.1"/><stop offset="100%" stopColor="#000" stopOpacity="0.25"/></linearGradient>
             </defs>
-            {bodyBack.map(function(d,i){return <path key={i} d={d} fill="url(#bodyGradB)" stroke="#2a2a3c" strokeWidth="0.7"/>;}) }
-            <ellipse cx="77" cy="12" rx="11" ry="12" fill="url(#bodyGradB)" stroke="#2a2a3c" strokeWidth="0.7"/>
-            <line x1="77" y1="28" x2="77" y2="72" stroke="#1a1a28" strokeWidth="0.5" opacity="0.6"/>
-            {muscles.map(function(m){
-              if(!BACK_VIEW_MUSCLES.has(m))return null;
-              var pathKey=m+"_back",path=SVG_PATHS[pathKey]||SVG_PATHS[m];if(!path)return null;
-              var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
-              var animOpacity=(0.35+(pct/100)*0.55)+(isPrimary?pulse:0);
-              var glowId="glowB_"+m.replace(/[^a-z0-9]/gi,"_");
-              return(<g key={m}>{isPrimary&&<path d={path} fill={"url(#"+glowId+")"} opacity={0.18+Math.max(0,pulse)*0.5} style={{filter:"blur(2px)"}}/>}<path d={path} fill={col} opacity={animOpacity} stroke={col} strokeWidth={isPrimary?"0.6":"0.3"} strokeOpacity="0.8"/><path d={path} fill="url(#specB)" opacity="0.15"/></g>);
-            })}
+            {bb.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.4" strokeOpacity="0.6"/>;})}
+            {bb.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bgr)" opacity="0.7"/>;})}
+            {rm(true)}
           </svg>
         </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         {muscles.map(function(m){
-          var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30,isSecondary=pct>=15&&pct<30;
-          return(<div key={m}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:2,background:col,boxShadow:isPrimary?"0 0 6px "+col+"99":"none",flexShrink:0}}/><span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>{isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"44"}}>PRIMARY</span>}{isSecondary&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px",fontWeight:600}}>SECONDARY</span>}</div><span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span></div><div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden",position:"relative"}}><div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s cubic-bezier(.4,0,.2,1)",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/>{[25,50,75].map(function(tick){return<div key={tick} style={{position:"absolute",left:tick+"%",top:0,bottom:0,width:1,background:"#0d0d15",opacity:pct>tick?0.4:0}}/>;})}</div></div>);
+          var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30,isSec=pct>=15&&pct<30;
+          return(<div key={m}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:9,height:9,borderRadius:3,background:col,boxShadow:isPrimary?"0 0 8px "+col+"cc":"none",flexShrink:0}}/><span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>{isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"55"}}>PRIMARY</span>}{isSec&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px"}}>SECONDARY</span>}</div><span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span></div><div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s ease",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/></div></div>);
         })}
       </div>
-      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}><div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC}}/><div style={{fontSize:10,color:GC}}><strong>Primary targets:</strong> {primaryMuscles.join(" · ")}</div></div>)}
+      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}><div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC,flexShrink:0}}/><div style={{fontSize:10,color:GC}}><strong>Primary:</strong> {primaryMuscles.join(" \u00b7 ")}</div></div>)}
     </div>
   );
 }
@@ -804,12 +896,31 @@ export default function App({user,supabase}){
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
     async function loadAll(){
-      var{data:p}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+      // Retry up to 3 times in case session isn't fully ready
+      var p=null;
+      for(var attempt=0;attempt<3;attempt++){
+        var{data:pd,error:pe}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+        if(pd){p=pd;break;}
+        if(attempt<2)await new Promise(function(r){setTimeout(r,500);});
+      }
       if(p){
-        setProfile({name:p.display_name||p.username||"",age:p.age||"",sex:p.sex||"male",wLbs:p.weight_lbs||"",hFt:p.height_ft||"",hIn:p.height_in||"",activ:p.activity_level||"moderate",bio:p.bio||"",avatar:p.avatar_index||0});
+        setProfile({
+          name:p.display_name||p.username||"",
+          age:p.age||"",
+          sex:p.sex||"male",
+          wLbs:p.weight_lbs||"",
+          hFt:p.height_ft||"",
+          hIn:p.height_in||"",
+          activ:p.activity_level||"moderate",
+          bio:p.bio||"",
+          avatar:p.avatar_index||0,
+        });
         if(p.goal)setGoal(p.goal);
         if(p.cal_goal)setCalGoal(p.cal_goal);
-        if(p.macro_protein||p.macro_carbs||p.macro_fat){setMacros({protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65});setMacLocked(true);}
+        if(p.macro_protein||p.macro_carbs||p.macro_fat){
+          setMacros({protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65});
+          setMacLocked(true);
+        }
       }
       var today=new Date().toISOString().split("T")[0];
       var{data:ws}=await supabase.from("workouts").select("*").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
@@ -848,7 +959,14 @@ export default function App({user,supabase}){
   }
 
   async function sendMatchReq(toUserId){
-    try{await supabase.from("match_requests").insert({from_user_id:user.id,to_user_id:toUserId});setSuggested(suggested.filter(function(s){return s.id!==toUserId;}));loadSocial();}catch(e){}
+    try{
+      // Ensure our own profile row exists first
+      await supabase.from("profiles").upsert({id:user.id},{onConflict:"id"});
+      var{error}=await supabase.from("match_requests").insert({from_user_id:user.id,to_user_id:toUserId,status:"pending"});
+      if(error){console.log("Match req error:",error.message);return;}
+      setSuggested(suggested.filter(function(s){return s.id!==toUserId;}));
+      loadSocial();
+    }catch(e){console.log("Match req exception:",e);}
   }
 
   async function respondMatch(matchId,accept){
