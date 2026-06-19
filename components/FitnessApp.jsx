@@ -1008,24 +1008,42 @@ export default function App({user,supabase}){
 
   async function saveProfile(p,g,cg,mac){
     if(!user||!supabase)return;
-    var payload={id:user.id,display_name:p.name||"",username:p.name||"",bio:p.bio||"",avatar_index:p.avatar||0,age:p.age?+p.age:null,sex:p.sex||"male",weight_lbs:p.wLbs?+p.wLbs:null,height_ft:p.hFt?+p.hFt:null,height_in:p.hIn?+p.hIn:null,activity_level:p.activ||"moderate",goal:g||goal,cal_goal:cg||calGoal,macro_protein:mac?mac.protein:macros.protein,macro_carbs:mac?mac.carbs:macros.carbs,macro_fat:mac?mac.fat:macros.fat,updated_at:new Date().toISOString()};
-    console.log("SAVING PROFILE:",payload);
+    var nm=p.name||"";
+    var updates={
+      display_name:nm,
+      username:nm,
+      bio:p.bio||null,
+      avatar_index:p.avatar||0,
+      age:p.age?+p.age:null,
+      sex:p.sex||"male",
+      weight_lbs:p.wLbs?+p.wLbs:null,
+      height_ft:p.hFt?+p.hFt:null,
+      height_in:p.hIn?+p.hIn:null,
+      activity_level:p.activ||"moderate",
+      goal:g||goal,
+      cal_goal:cg||calGoal,
+      macro_protein:mac?mac.protein:macros.protein,
+      macro_carbs:mac?mac.carbs:macros.carbs,
+      macro_fat:mac?mac.fat:macros.fat,
+      updated_at:new Date().toISOString(),
+    };
     try{
-      var{data:saved,error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"}).select();
-      if(error){console.log("SAVE ERROR:",error.message,error.code,error.details);}
-      else{
-        console.log("SAVE SUCCESS:",saved);
-        try{
-          localStorage.setItem("lockin_profile_"+user.id,JSON.stringify({
-            name:p.name,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
-            activ:p.activ,bio:p.bio,avatar:p.avatar,
-            goal:g||goal,calGoal:cg||calGoal,
-            macros:mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat},
-          }));
-          console.log("LOCALSTORAGE SAVED");
-        }catch(e){console.log("LOCALSTORAGE ERROR:",e);}
+      // Try update first
+      var{error:ue}=await supabase.from("profiles").update(updates).eq("id",user.id);
+      if(ue){
+        // If update fails, try insert
+        var{error:ie}=await supabase.from("profiles").insert(Object.assign({id:user.id},updates));
+        if(ie)console.log("Profile save failed:",ie.message);
       }
-    }catch(e){console.log("SAVE EXCEPTION:",e);}
+      // Cache locally regardless
+      try{
+        var cache={name:nm,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
+          activ:p.activ,bio:p.bio,avatar:p.avatar,
+          goal:g||goal,calGoal:cg||calGoal,
+          macros:mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat}};
+        localStorage.setItem("lockin_profile_"+user.id,JSON.stringify(cache));
+      }catch(e){}
+    }catch(e){console.log("saveProfile error:",e);}
   }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
