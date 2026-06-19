@@ -896,31 +896,42 @@ export default function App({user,supabase}){
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
     async function loadAll(){
-      // Retry up to 3 times in case session isn't fully ready
+      // Load from localStorage cache first for instant display
+      try{
+        var cached=localStorage.getItem("lockin_profile_"+user.id);
+        if(cached){
+          var cp=JSON.parse(cached);
+          setProfile({name:cp.name||"",age:cp.age||"",sex:cp.sex||"male",wLbs:cp.wLbs||"",hFt:cp.hFt||"",hIn:cp.hIn||"",activ:cp.activ||"moderate",bio:cp.bio||"",avatar:cp.avatar||0});
+          if(cp.goal)setGoal(cp.goal);
+          if(cp.calGoal)setCalGoal(cp.calGoal);
+          if(cp.macros)setMacros(cp.macros);
+        }
+      }catch(e){}
+      // Then load from Supabase and update
       var p=null;
       for(var attempt=0;attempt<3;attempt++){
-        var{data:pd,error:pe}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+        var{data:pd}=await supabase.from("profiles").select("*").eq("id",user.id).single();
         if(pd){p=pd;break;}
-        if(attempt<2)await new Promise(function(r){setTimeout(r,500);});
+        if(attempt<2)await new Promise(function(r){setTimeout(r,600);});
       }
       if(p){
-        setProfile({
-          name:p.display_name||p.username||"",
-          age:p.age||"",
-          sex:p.sex||"male",
-          wLbs:p.weight_lbs||"",
-          hFt:p.height_ft||"",
-          hIn:p.height_in||"",
-          activ:p.activity_level||"moderate",
-          bio:p.bio||"",
-          avatar:p.avatar_index||0,
-        });
+        var prof={name:p.display_name||p.username||"",age:p.age||"",sex:p.sex||"male",wLbs:p.weight_lbs||"",hFt:p.height_ft||"",hIn:p.height_in||"",activ:p.activity_level||"moderate",bio:p.bio||"",avatar:p.avatar_index||0};
+        setProfile(prof);
         if(p.goal)setGoal(p.goal);
         if(p.cal_goal)setCalGoal(p.cal_goal);
+        var mac=null;
         if(p.macro_protein||p.macro_carbs||p.macro_fat){
-          setMacros({protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65});
-          setMacLocked(true);
+          mac={protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65};
+          setMacros(mac);setMacLocked(true);
         }
+        // Cache to localStorage for instant load next time
+        try{
+          localStorage.setItem("lockin_profile_"+user.id,JSON.stringify({
+            name:prof.name,age:prof.age,sex:prof.sex,wLbs:prof.wLbs,hFt:prof.hFt,hIn:prof.hIn,
+            activ:prof.activ,bio:prof.bio,avatar:prof.avatar,
+            goal:p.goal,calGoal:p.cal_goal,macros:mac,
+          }));
+        }catch(e){}
       }
       var today=new Date().toISOString().split("T")[0];
       var{data:ws}=await supabase.from("workouts").select("*").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
@@ -998,7 +1009,21 @@ export default function App({user,supabase}){
   async function saveProfile(p,g,cg,mac){
     if(!user||!supabase)return;
     var payload={id:user.id,display_name:p.name||"",username:p.name||"",bio:p.bio||"",avatar_index:p.avatar||0,age:p.age?+p.age:null,sex:p.sex||"male",weight_lbs:p.wLbs?+p.wLbs:null,height_ft:p.hFt?+p.hFt:null,height_in:p.hIn?+p.hIn:null,activity_level:p.activ||"moderate",goal:g||goal,cal_goal:cg||calGoal,macro_protein:mac?mac.protein:macros.protein,macro_carbs:mac?mac.carbs:macros.carbs,macro_fat:mac?mac.fat:macros.fat,updated_at:new Date().toISOString()};
-    try{var{error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"});if(error)console.log("Save error:",error.message);}catch(e){console.log("Save exception:",e);}
+    try{
+      var{error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"});
+      if(error){console.log("Save error:",error.message);}
+      else{
+        // Also cache locally for instant load
+        try{
+          localStorage.setItem("lockin_profile_"+user.id,JSON.stringify({
+            name:p.name,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
+            activ:p.activ,bio:p.bio,avatar:p.avatar,
+            goal:g||goal,calGoal:cg||calGoal,
+            macros:mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat},
+          }));
+        }catch(e){}
+      }
+    }catch(e){console.log("Save exception:",e);}
   }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
