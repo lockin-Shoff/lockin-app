@@ -778,6 +778,7 @@ export default function App({user, supabase}){
   var[barState,setBarState]=useState("idle");
   var[barResult,setBarResult]=useState(null);
   var[barSrv,setBarSrv]=useState(1);
+  var[dbLoaded,setDbLoaded]=useState(false);
   var barRef=useRef(null);
 
   var wKg=profile.wLbs?+profile.wLbs*0.453592:0;
@@ -789,7 +790,74 @@ export default function App({user, supabase}){
   var GC=goalObj.color;
   var IC={low:"#3eb8f5",moderate:"#e8a83e",high:"#ff6b35"};
 
+  // ── Load everything from Supabase on mount ──────────────────
+  useEffect(function(){
+    if(!user||!supabase)return;
+    async function loadAll(){
+      try{
+        // Load profile
+        var{data:p}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+        if(p){
+          setProfile({
+            name:p.display_name||p.username||"",
+            age:p.age||"",
+            sex:p.sex||"male",
+            wLbs:p.weight_lbs||"",
+            hFt:p.height_ft||"",
+            hIn:p.height_in||"",
+            activ:p.activity_level||"moderate",
+            bio:p.bio||"",
+            avatar:p.avatar_index||0,
+          });
+          if(p.goal)setGoal(p.goal);
+          if(p.cal_goal)setCalGoal(p.cal_goal);
+          if(p.macro_protein||p.macro_carbs||p.macro_fat){
+            setMacros({protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65});
+            setMacLocked(true);
+          }
+        }
+        // Load today's workouts
+        var today=new Date().toISOString().split("T")[0];
+        var{data:ws}=await supabase.from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
+        if(ws&&ws.length){
+          setWorkouts(ws.map(function(w){return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",time:new Date(w.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:[]}}));
+        }
+        // Load today's meals
+        var{data:ms}=await supabase.from("meals").select("*").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
+        if(ms&&ms.length){
+          setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}}));
+        }
+      }catch(e){console.log("Load error:",e);}
+      setDbLoaded(true);
+    }
+    loadAll();
+  },[user]);
+
   useEffect(function(){if(!macLocked)setMacros(calcMacros(calGoal,goal));},[goal,calGoal,macLocked]);
+
+  // ── Save profile to Supabase ────────────────────────────────
+  async function saveProfile(p,g,cg,mac){
+    if(!user||!supabase)return;
+    try{
+      await supabase.from("profiles").update({
+        display_name:p.name,
+        bio:p.bio,
+        avatar_index:p.avatar,
+        age:p.age?+p.age:null,
+        sex:p.sex,
+        weight_lbs:p.wLbs?+p.wLbs:null,
+        height_ft:p.hFt?+p.hFt:null,
+        height_in:p.hIn?+p.hIn:null,
+        activity_level:p.activ,
+        goal:g||goal,
+        cal_goal:cg||calGoal,
+        macro_protein:mac?mac.protein:macros.protein,
+        macro_carbs:mac?mac.carbs:macros.carbs,
+        macro_fat:mac?mac.fat:macros.fat,
+        updated_at:new Date().toISOString(),
+      }).eq("id",user.id);
+    }catch(e){console.log("Save profile error:",e);}
+  }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
   var calE=meals.reduce(function(s,m){return s+m.cal;},0);
@@ -800,10 +868,39 @@ export default function App({user, supabase}){
   var calLeft=calGoal-netCal;
   var ring=Math.min((netCal/calGoal)*100,100);
 
-  function applyS(){setCalGoal(sugCal);setMacros(calcMacros(sugCal,goal));setMacLocked(false);}
+  function applyS(){
+    setCalGoal(sugCal);
+    var nm=calcMacros(sugCal,goal);
+    setMacros(nm);
+    setMacLocked(false);
+    saveProfile(profile,goal,sugCal,nm);
+  }
+
   function closeEx(){setShowEx(false);setSelEx(null);setExDur(30);setExTab("log");setCustEx({name:"",dur:30,cal:0});}
-  function addW(){if(!selEx)return;var c=Math.round(selEx.caloriesPerMin*exDur);setWorkouts(workouts.concat([{id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeEx();}
-  function addCW(){if(!custEx.name)return;setWorkouts(workouts.concat([{id:Date.now(),name:custEx.name,em:EM.medal,dur:+custEx.dur,cal:+custEx.cal,cat:"Custom",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeEx();}
+
+  async function addW(){
+    if(!selEx)return;
+    var c=Math.round(selEx.caloriesPerMin*exDur);
+    var newW={id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    setWorkouts(workouts.concat([newW]));
+    closeEx();
+    if(user&&supabase){
+      try{await supabase.from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c});}
+      catch(e){console.log("Save workout error:",e);}
+    }
+  }
+
+  async function addCW(){
+    if(!custEx.name)return;
+    var newW={id:Date.now(),name:custEx.name,em:EM.medal,dur:+custEx.dur,cal:+custEx.cal,cat:"Custom",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    setWorkouts(workouts.concat([newW]));
+    closeEx();
+    if(user&&supabase){
+      try{await supabase.from("workouts").insert({user_id:user.id,name:custEx.name,category:"Custom",duration:+custEx.dur,calories:+custEx.cal});}
+      catch(e){console.log("Save custom workout error:",e);}
+    }
+  }
+
   function addMove(){if(!curMove.trim())return;var nm=moves.concat([{name:curMove.trim(),sets:[]}]);setMoves(nm);setCurMove("");setActiveIdx(nm.length-1);}
   function addSet(mi){var m=moves.map(function(x){return{name:x.name,sets:x.sets.slice()};});var prev=m[mi].sets[m[mi].sets.length-1];m[mi].sets.push({reps:prev?prev.reps:"",weight:prev?prev.weight:"",note:"",done:false});setMoves(m);}
   function updSet(mi,si,f,v){var m=moves.map(function(x){return{name:x.name,sets:x.sets.map(function(s){return Object.assign({},s);})};});m[mi].sets[si][f]=v;setMoves(m);}
@@ -815,19 +912,33 @@ export default function App({user, supabase}){
     restRef.current=setInterval(function(){s--;if(s<=0){clearInterval(restRef.current);setRestSecs(null);}else setRestSecs(s);},1000);
   }
   function remMove(mi){setMoves(moves.filter(function(_,i){return i!==mi;}));if(activeIdx===mi)setActiveIdx(null);}
-  function saveW(){
+
+  async function saveW(){
     var ts=moves.reduce(function(s,m){return s+m.sets.length;},0);
     var ds=moves.reduce(function(s,m){return s+m.sets.filter(function(x){return x.done;}).length;},0);
     var c=Math.round((timer.elapsed/60)*7);
-    setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,totalSets:ts,doneSets:ds}]));
+    var newW={id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,totalSets:ts,doneSets:ds};
+    setWorkouts(workouts.concat([newW]));
     setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
+    if(user&&supabase){
+      try{
+        var{data:wd}=await supabase.from("workouts").insert({user_id:user.id,name:recName||"Recorded Workout",category:"Strength",duration:Math.max(1,Math.round(timer.elapsed/60)),calories:c}).select().single();
+        if(wd){
+          var setRows=[];
+          moves.forEach(function(mv){mv.sets.forEach(function(s,i){setRows.push({workout_id:wd.id,exercise:mv.name,set_number:i+1,reps:s.reps,weight:s.weight,note:s.note,done:s.done});});});
+          if(setRows.length)await supabase.from("workout_sets").insert(setRows);
+        }
+      }catch(e){console.log("Save recorded workout error:",e);}
+    }
   }
+
   function exportH(w){
     var end=new Date(),start=new Date(end-((w.dur||1)*60000));
     function fmt(d){return d.toISOString().replace(/\.\d{3}Z/,"+00:00");}
     var xml='<?xml version="1.0"?>\n<HealthData locale="en_US">\n  <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="'+(w.dur||1)+'" durationUnit="min" totalEnergyBurned="'+(w.cal||0)+'" totalEnergyBurnedUnit="kcal" sourceName="Lock In" startDate="'+fmt(start)+'" endDate="'+fmt(end)+'">\n  </Workout>\n</HealthData>';
     var blob=new Blob([xml],{type:"application/xml"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=(w.name||"w").replace(/\s+/g,"_")+"_Health.xml";a.click();URL.revokeObjectURL(url);
   }
+
   async function lookupBarcode(code){
     if(!code||code.length<6)return;
     setBarState("scanning");setBarResult(null);
@@ -840,10 +951,45 @@ export default function App({user, supabase}){
       setBarSrv(1);setBarState("result");
     }catch(err){setBarState("error");}
   }
+
   function closeFood(){setShowFood(false);setFoodTab("browse");setSelFood(null);setFoodSrv(1);setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);setBarInput("");setBarSrv(1);}
-  function addMeal(food,srv){setMeals(meals.concat([{id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeFood();}
-  function addCM(){if(!custFood.name)return;setMeals(meals.concat([{id:Date.now(),name:custFood.name,em:EM.plate,cal:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per:"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeFood();}
-  function addSM(food){setMeals(meals.concat([{id:Date.now(),name:food.name,em:EM.plate,cal:food.calories,protein:food.protein,carbs:food.carbs,fat:food.fat,servings:1,per:"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));setShowSugs(false);}
+
+  async function addMeal(food,srv){
+    var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    setMeals(meals.concat([newM]));
+    closeFood();
+    if(user&&supabase){
+      try{await supabase.from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving"});}
+      catch(e){console.log("Save meal error:",e);}
+    }
+  }
+
+  async function addCM(){
+    if(!custFood.name)return;
+    var newM={id:Date.now(),name:custFood.name,em:EM.plate,cal:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per:"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    setMeals(meals.concat([newM]));
+    closeFood();
+    if(user&&supabase){
+      try{await supabase.from("meals").insert({user_id:user.id,name:custFood.name,calories:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per_unit:"serving"});}
+      catch(e){console.log("Save custom meal error:",e);}
+    }
+  }
+
+  function addSM(food){
+    addMeal({...food,calories:food.calories,per:"serving"},1);
+    setShowSugs(false);
+  }
+
+  async function removeWorkout(id){
+    setWorkouts(workouts.filter(function(x){return x.id!==id;}));
+    if(user&&supabase){try{await supabase.from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  }
+
+  async function removeMeal(id){
+    setMeals(meals.filter(function(x){return x.id!==id;}));
+    if(user&&supabase){try{await supabase.from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  }
+
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
   var css="@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Bebas+Neue&display=swap');"
@@ -869,6 +1015,15 @@ export default function App({user, supabase}){
     +"@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}";
 
   var base={minHeight:"100vh",background:"#0a0a0f",color:"#e8e4dc",fontFamily:"DM Sans,sans-serif",maxWidth:480,margin:"0 auto"};
+
+  if(!dbLoaded) return (
+    <div style={{...base,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+      <style>{css}</style>
+      <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:28,color:GC,letterSpacing:4}}>LOCK IN</div>
+      <div style={{width:28,height:28,border:"3px solid #1e1e2a",borderTopColor:GC,borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
+      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+    </div>
+  );
 
   if(screen==="profile") return (
     <div style={base}><style>{css}</style>
@@ -909,7 +1064,8 @@ export default function App({user, supabase}){
             </div>
             <button className="btn" onClick={()=>{applyS();setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Apply {sugCal} kcal + Auto Macros</button>
           </div>)}
-          <button className="btn" onClick={()=>setScreen("main")} style={{background:"#1e1e2a",color:"#e8e4dc",border:"1px solid #2a2a3a"}}>Save and Return</button>
+          <button className="btn" onClick={()=>{saveProfile(profile,goal,calGoal,macros);setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Save Profile</button>
+          <button className="btn" onClick={()=>setScreen("main")} style={{background:"#1e1e2a",color:"#e8e4dc",border:"1px solid #2a2a3a"}}>Cancel</button>
         </div>
       </div>
     </div>
@@ -1011,7 +1167,7 @@ export default function App({user, supabase}){
           <div style={{display:"flex",gap:7,alignItems:"center"}}>
             <div style={{background:"#13131a",border:"1px solid #2a2a3a",borderRadius:9,padding:"5px 9px"}}>
               <div style={{fontSize:8,color:"#444"}}>GOAL</div>
-              <div style={{display:"flex",alignItems:"center",gap:3}}><input type="number" value={calGoal} onChange={e=>setCalGoal(+e.target.value)} style={{width:48,fontSize:13,fontWeight:700,textAlign:"right"}}/><span style={{fontSize:8,color:"#444"}}>kcal</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:3}}><input type="number" value={calGoal} onChange={e=>{setCalGoal(+e.target.value);}} style={{width:48,fontSize:13,fontWeight:700,textAlign:"right"}}/><span style={{fontSize:8,color:"#444"}}>kcal</span></div>
             </div>
             <button onClick={()=>setScreen("profile")} style={{fontSize:24,background:"#13131a",border:"2px solid #2a2a3a",borderRadius:"50%",width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{AVATARS[profile.avatar]}</button>
           </div>
@@ -1107,9 +1263,9 @@ export default function App({user, supabase}){
             <div key={w.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"11px 13px"}}>
               <div style={{display:"flex",alignItems:"center",gap:9}}>
                 <span style={{fontSize:20}}>{w.em}</span>
-                <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{w.name}</div><div style={{fontSize:10,color:"#555"}}>{w.dur} min - {w.time} - {w.cat}</div>{w.moves&&<div style={{fontSize:10,color:"#555"}}>{w.moves.length} exercises - {w.totalSets} sets</div>}</div>
+                <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{w.name}</div><div style={{fontSize:10,color:"#555"}}>{w.dur} min - {w.time} - {w.cat}</div>{w.moves&&w.moves.length>0&&<div style={{fontSize:10,color:"#555"}}>{w.moves.length} exercises - {w.totalSets} sets</div>}</div>
                 <div style={{textAlign:"right"}}><div style={{color:GC,fontWeight:700,fontSize:13}}>-{w.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div>
-                <button className="del" onClick={()=>setWorkouts(workouts.filter(function(x){return x.id!==w.id;}))}>x</button>
+                <button className="del" onClick={()=>removeWorkout(w.id)}>x</button>
               </div>
               {w.moves&&w.moves.length>0&&(<div style={{marginTop:9,paddingTop:9,borderTop:"1px solid #1e1e2a"}}>
                 {w.moves.map(function(mv,mi){return <div key={mi} style={{marginBottom:7}}><div style={{fontSize:10,fontWeight:700,color:"#888",marginBottom:3}}>{mv.name}</div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{mv.sets.map(function(s,si){return <div key={si} style={{background:"#0a0a0f",borderRadius:6,padding:"3px 7px",fontSize:9,color:s.done?GC:"#555"}}>{s.reps||"-"}{s.weight?" @ "+s.weight:""}</div>;})}</div></div>;})}
@@ -1138,7 +1294,7 @@ export default function App({user, supabase}){
                 <span style={{fontSize:20}}>{m.em}</span>
                 <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{m.name}</div><div style={{fontSize:10,color:"#555"}}>{m.servings}x {m.per} - {m.time}</div></div>
                 <div style={{textAlign:"right"}}><div style={{color:"#e8a83e",fontWeight:700,fontSize:13}}>+{m.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div>
-                <button className="del" onClick={()=>setMeals(meals.filter(function(x){return x.id!==m.id;}))}>x</button>
+                <button className="del" onClick={()=>removeMeal(m.id)}>x</button>
               </div>
               <div style={{display:"flex",gap:4,marginTop:7}}>
                 {[["P",m.protein,"#c8f53e"],["C",m.carbs,"#e8a83e"],["F",m.fat,"#3eb8f5"]].map(function(x){return <div key={x[0]} style={{flex:1,background:"#0a0a0f",borderRadius:6,padding:"3px 0",textAlign:"center"}}><div style={{fontSize:7,color:"#555"}}>{x[0]}</div><div style={{fontSize:11,fontWeight:700,color:x[2]}}>{x[1]}g</div></div>;})}
@@ -1150,7 +1306,7 @@ export default function App({user, supabase}){
         {tab==="goals"&&(<div style={{display:"flex",flexDirection:"column",gap:13}}>
           <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:20,letterSpacing:1}}>FITNESS GOAL</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            {GOALS.map(function(g){return <div key={g.id} onClick={()=>setGoal(g.id)} style={{padding:"10px",borderRadius:11,border:"2px solid "+(goal===g.id?g.color:"#1e1e2a"),cursor:"pointer",textAlign:"center",background:"#13131a",transition:"all .15s"}}><div style={{fontSize:22,marginBottom:3}}>{g.em}</div><div style={{fontWeight:700,fontSize:13,color:goal===g.id?g.color:"#e8e4dc"}}>{g.label}</div><div style={{fontSize:9,color:"#555",marginTop:2}}>{g.desc}</div><div style={{fontSize:8,color:g.color,marginTop:2}}>{g.calMod>=0?"+":""}{g.calMod} kcal</div></div>;})}
+            {GOALS.map(function(g){return <div key={g.id} onClick={()=>{setGoal(g.id);saveProfile(profile,g.id,calGoal,macros);}} style={{padding:"10px",borderRadius:11,border:"2px solid "+(goal===g.id?g.color:"#1e1e2a"),cursor:"pointer",textAlign:"center",background:"#13131a",transition:"all .15s"}}><div style={{fontSize:22,marginBottom:3}}>{g.em}</div><div style={{fontWeight:700,fontSize:13,color:goal===g.id?g.color:"#e8e4dc"}}>{g.label}</div><div style={{fontSize:9,color:"#555",marginTop:2}}>{g.desc}</div><div style={{fontSize:8,color:g.color,marginTop:2}}>{g.calMod>=0?"+":""}{g.calMod} kcal</div></div>;})}
           </div>
           <button className="btn" onClick={()=>setScreen("profile")} style={{background:GC+"11",border:"1px solid "+GC+"33",color:GC}}>{tdee>0?"TDEE: "+tdee+" kcal - Suggested: "+sugCal+" kcal":"Set up profile for TDEE calculator"}</button>
           {tdee>0&&calGoal!==sugCal&&<button className="btn" onClick={applyS} style={{background:GC,color:"#0a0a0f"}}>Apply {sugCal} kcal + Auto Macros</button>}
@@ -1159,10 +1315,10 @@ export default function App({user, supabase}){
           {[["Protein","protein","#c8f53e",50,350],["Carbs","carbs","#e8a83e",30,600],["Fat","fat","#3eb8f5",20,200]].map(function(x){return (
             <div key={x[1]} className="card" style={{padding:11}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:11,color:"#888"}}>{x[0]} (g)</span><span style={{fontWeight:700,color:x[2],fontSize:13}}>{macros[x[1]]}g</span></div>
-              <input type="range" min={x[3]} max={x[4]} step={5} value={macros[x[1]]} style={{accentColor:x[2]}} onChange={function(e){setMacros(Object.assign({},macros,{[x[1]]:+e.target.value}));setMacLocked(true);}}/>
+              <input type="range" min={x[3]} max={x[4]} step={5} value={macros[x[1]]} style={{accentColor:x[2]}} onChange={function(e){var nm=Object.assign({},macros,{[x[1]]:+e.target.value});setMacros(nm);setMacLocked(true);saveProfile(profile,goal,calGoal,nm);}}/>
             </div>
           );})}
-          {macLocked&&<button className="btn" onClick={()=>{setMacros(calcMacros(calGoal,goal));setMacLocked(false);}} style={{background:"#1e1e2a",color:"#888",border:"1px dashed #2a2a3a",fontSize:11}}>Reset to goal defaults</button>}
+          {macLocked&&<button className="btn" onClick={()=>{var nm=calcMacros(calGoal,goal);setMacros(nm);setMacLocked(false);saveProfile(profile,goal,calGoal,nm);}} style={{background:"#1e1e2a",color:"#888",border:"1px dashed #2a2a3a",fontSize:11}}>Reset to goal defaults</button>}
           <div className="card" style={{padding:11}}>
             <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:7}}>MACRO SPLIT</div>
             <div style={{display:"flex",borderRadius:99,overflow:"hidden",height:9,marginBottom:9}}>
