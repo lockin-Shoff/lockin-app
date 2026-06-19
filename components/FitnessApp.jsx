@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { supabase as sbClient } from "../lib/supabase";
 
 var EM = {
   run:"\uD83C\uDFC3",bike:"\uD83D\uDEB4",swim:"\uD83C\uDFCA",lift:"\uD83C\uDFCB",
@@ -1007,43 +1008,45 @@ export default function App({user,supabase}){
   useEffect(function(){if(!macLocked)setMacros(calcMacros(calGoal,goal));},[goal,calGoal,macLocked]);
 
   async function saveProfile(p,g,cg,mac){
-    if(!user||!supabase)return;
+    var sb=supabase||sbClient;
+    if(!user||!sb)return;
     var nm=p.name||"";
-    var updates={
-      display_name:nm,
-      username:nm,
-      bio:p.bio||null,
-      avatar_index:p.avatar||0,
-      age:p.age?+p.age:null,
-      sex:p.sex||"male",
-      weight_lbs:p.wLbs?+p.wLbs:null,
-      height_ft:p.hFt?+p.hFt:null,
-      height_in:p.hIn?+p.hIn:null,
-      activity_level:p.activ||"moderate",
-      goal:g||goal,
-      cal_goal:cg||calGoal,
-      macro_protein:mac?mac.protein:macros.protein,
-      macro_carbs:mac?mac.carbs:macros.carbs,
-      macro_fat:mac?mac.fat:macros.fat,
-      updated_at:new Date().toISOString(),
-    };
+    var goalVal=g||goal;
+    var cgVal=cg||calGoal;
+    var macVal=mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat};
+    // Save each field individually to avoid column permission issues
+    var fields=[
+      ["display_name", nm],
+      ["username", nm],
+      ["bio", p.bio||null],
+      ["avatar_index", p.avatar||0],
+      ["age", p.age?+p.age:null],
+      ["sex", p.sex||"male"],
+      ["weight_lbs", p.wLbs?+p.wLbs:null],
+      ["height_ft", p.hFt?+p.hFt:null],
+      ["height_in", p.hIn?+p.hIn:null],
+      ["activity_level", p.activ||"moderate"],
+      ["goal", goalVal],
+      ["cal_goal", cgVal],
+      ["macro_protein", macVal.protein],
+      ["macro_carbs", macVal.carbs],
+      ["macro_fat", macVal.fat],
+    ];
+    for(var i=0;i<fields.length;i++){
+      var row={};
+      row[fields[i][0]]=fields[i][1];
+      var{error}=await sb.from("profiles").update(row).eq("id",user.id);
+      if(error)console.log("Failed to save "+fields[i][0]+":",error.message);
+      else console.log("Saved "+fields[i][0]+":",fields[i][1]);
+    }
+    // Cache locally
     try{
-      // Try update first
-      var{error:ue}=await supabase.from("profiles").update(updates).eq("id",user.id);
-      if(ue){
-        // If update fails, try insert
-        var{error:ie}=await supabase.from("profiles").insert(Object.assign({id:user.id},updates));
-        if(ie)console.log("Profile save failed:",ie.message);
-      }
-      // Cache locally regardless
-      try{
-        var cache={name:nm,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
-          activ:p.activ,bio:p.bio,avatar:p.avatar,
-          goal:g||goal,calGoal:cg||calGoal,
-          macros:mac||{protein:macros.protein,carbs:macros.carbs,fat:macros.fat}};
-        localStorage.setItem("lockin_profile_"+user.id,JSON.stringify(cache));
-      }catch(e){}
-    }catch(e){console.log("saveProfile error:",e);}
+      localStorage.setItem("lockin_profile_"+user.id,JSON.stringify({
+        name:nm,age:p.age,sex:p.sex,wLbs:p.wLbs,hFt:p.hFt,hIn:p.hIn,
+        activ:p.activ,bio:p.bio,avatar:p.avatar,
+        goal:goalVal,calGoal:cgVal,macros:macVal,
+      }));
+    }catch(e){}
   }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
