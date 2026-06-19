@@ -838,25 +838,29 @@ export default function App({user, supabase}){
   // ── Save profile to Supabase ────────────────────────────────
   async function saveProfile(p,g,cg,mac){
     if(!user||!supabase)return;
+    var payload={
+      id:user.id,
+      display_name:p.name||"",
+      username:p.name||"",
+      bio:p.bio||"",
+      avatar_index:p.avatar||0,
+      age:p.age?+p.age:null,
+      sex:p.sex||"male",
+      weight_lbs:p.wLbs?+p.wLbs:null,
+      height_ft:p.hFt?+p.hFt:null,
+      height_in:p.hIn?+p.hIn:null,
+      activity_level:p.activ||"moderate",
+      goal:g||goal,
+      cal_goal:cg||calGoal,
+      macro_protein:mac?mac.protein:macros.protein,
+      macro_carbs:mac?mac.carbs:macros.carbs,
+      macro_fat:mac?mac.fat:macros.fat,
+      updated_at:new Date().toISOString(),
+    };
     try{
-      await supabase.from("profiles").update({
-        display_name:p.name,
-        bio:p.bio,
-        avatar_index:p.avatar,
-        age:p.age?+p.age:null,
-        sex:p.sex,
-        weight_lbs:p.wLbs?+p.wLbs:null,
-        height_ft:p.hFt?+p.hFt:null,
-        height_in:p.hIn?+p.hIn:null,
-        activity_level:p.activ,
-        goal:g||goal,
-        cal_goal:cg||calGoal,
-        macro_protein:mac?mac.protein:macros.protein,
-        macro_carbs:mac?mac.carbs:macros.carbs,
-        macro_fat:mac?mac.fat:macros.fat,
-        updated_at:new Date().toISOString(),
-      }).eq("id",user.id);
-    }catch(e){console.log("Save profile error:",e);}
+      var{error}=await supabase.from("profiles").upsert(payload,{onConflict:"id"});
+      if(error)console.log("Save profile error:",error.message);
+    }catch(e){console.log("Save profile exception:",e);}
   }
 
   var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
