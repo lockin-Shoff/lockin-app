@@ -1222,13 +1222,7 @@ export default function App({user,supabase}){
             </div>
             <button className="btn" onClick={()=>{applyS();setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Apply {sugCal} kcal + Auto Macros</button>
           </div>)}
-          <button className="btn" onClick={async()=>{
-            var btn=document.activeElement;
-            if(btn)btn.textContent="Saving...";
-            await saveProfile(profile,goal,calGoal,macros);
-            if(btn)btn.textContent="Saved!";
-            setTimeout(()=>setScreen("main"),600);
-          }} style={{background:GC,color:"#0a0a0f"}}>Save Profile</button>
+          <button className="btn" onClick={()=>{saveProfile(profile,goal,calGoal,macros);setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Save Profile</button>
           <button className="btn" onClick={()=>setScreen("main")} style={{background:"#1e1e2a",color:"#e8e4dc",border:"1px solid #2a2a3a"}}>Cancel</button>
         </div>
       </div>
