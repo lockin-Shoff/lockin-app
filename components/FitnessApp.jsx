@@ -1065,6 +1065,13 @@ export default function App({user,supabase}){
   var[barState,setBarState]=useState("idle");
   var[barResult,setBarResult]=useState(null);
   var[barSrv,setBarSrv]=useState(1);
+  var[foodSearch,setFoodSearch]=useState("");
+  var[foodSearchResults,setFoodSearchResults]=useState([]);
+  var[foodSearchLoading,setFoodSearchLoading]=useState(false);
+  var[selSearchFood,setSelSearchFood]=useState(null);
+  var[searchGrams,setSearchGrams]=useState(100);
+  var[searchUnit,setSearchUnit]=useState("g");
+  var[mealType,setMealType]=useState("other");
   var[dbLoaded,setDbLoaded]=useState(false);
   // Social state
   var[socialTab,setSocialTab]=useState("discover");
@@ -1086,6 +1093,9 @@ export default function App({user,supabase}){
   var[streak,setStreak]=useState(0);
   var[streakFreezes,setStreakFreezes]=useState(0);
   var[xpAnim,setXpAnim]=useState(null);
+  var[installPrompt,setInstallPrompt]=useState(null);
+  var[showInstall,setShowInstall]=useState(false);
+  var[notifPerm,setNotifPerm]=useState("default");
 
   var wKg=profile.wLbs?+profile.wLbs*0.453592:0;
   var hCm=(+profile.hFt*30.48)+(+profile.hIn*2.54);
@@ -1097,6 +1107,41 @@ export default function App({user,supabase}){
   var IC={low:"#3eb8f5",moderate:"#e8a83e",high:"#ff6b35"};
 
   // Load from Supabase on mount
+  // PWA: register service worker + capture install prompt
+  useEffect(function(){
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("/sw.js").then(function(reg){
+        console.log("SW registered");
+        // Check notification permission
+        if("Notification" in window) setNotifPerm(Notification.permission);
+      }).catch(function(e){console.log("SW error:",e);});
+    }
+    function handleInstall(e){
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstall(true);
+    }
+    window.addEventListener("beforeinstallprompt", handleInstall);
+    return function(){window.removeEventListener("beforeinstallprompt", handleInstall);};
+  },[]);
+
+  async function requestNotifPermission(){
+    if(!("Notification" in window))return;
+    var perm=await Notification.requestPermission();
+    setNotifPerm(perm);
+    if(perm==="granted"){
+      new Notification("Lock In", {body:"Notifications enabled! You'll be notified of new match requests.",icon:"/icon-192.png"});
+    }
+  }
+
+  async function triggerInstall(){
+    if(!installPrompt)return;
+    installPrompt.prompt();
+    var result=await installPrompt.userChoice;
+    if(result.outcome==="accepted") setShowInstall(false);
+    setInstallPrompt(null);
+  }
+
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
     async function loadAll(){
@@ -1411,14 +1456,46 @@ export default function App({user,supabase}){
     }catch(err){setBarState("error");}
   }
 
-  function closeFood(){setShowFood(false);setFoodTab("browse");setSelFood(null);setFoodSrv(1);setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);setBarInput("");setBarSrv(1);}
+  function closeFood(){
+    setShowFood(false);setFoodTab("browse");setSelFood(null);setFoodSrv(1);
+    setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);
+    setBarInput("");setBarSrv(1);setFoodSearch("");setFoodSearchResults([]);
+    setSelSearchFood(null);setSearchGrams(100);setSearchUnit("g");setMealType("other");
+  }
+
+  async function searchFoods(q){
+    if(!q||q.length<2){setFoodSearchResults([]);return;}
+    setFoodSearchLoading(true);
+    try{
+      var url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=12&fields=product_name,brands,nutriments,serving_size,image_front_small_url,_id";
+      var res=await fetch(url);
+      var data=await res.json();
+      var results=(data.products||[]).filter(function(p){return p.product_name&&p.nutriments;}).map(function(p){
+        var n=p.nutriments||{};
+        return{id:p._id,name:p.product_name,brand:p.brands||"",image:p.image_front_small_url||null,
+          cal100:Math.round(n["energy-kcal_100g"]||0),
+          protein100:Math.round((n["proteins_100g"]||0)*10)/10,
+          carbs100:Math.round((n["carbohydrates_100g"]||0)*10)/10,
+          fat100:Math.round((n["fat_100g"]||0)*10)/10};
+      }).filter(function(p){return p.cal100>0;});
+      setFoodSearchResults(results);
+    }catch(e){setFoodSearchResults([]);}
+    setFoodSearchLoading(false);
+  }
+
+  function calcSearchMacros(food,grams,unit){
+    var g=unit==="oz"?grams*28.3495:grams;
+    var ratio=g/100;
+    return{cal:Math.round(food.cal100*ratio),protein:Math.round(food.protein100*ratio*10)/10,
+      carbs:Math.round(food.carbs100*ratio*10)/10,fat:Math.round(food.fat100*ratio*10)/10};
+  }
 
   async function addMeal(food,srv){
     var nowIso3=new Date().toISOString();
-    var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",logged_at:nowIso3,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",meal_type:mealType,logged_at:nowIso3,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
     setMeals(meals.concat([newM]));closeFood();
     try{
-      var{error:me}=await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving",logged_at:new Date().toISOString()});
+      var{error:me}=await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving",meal_type:mealType,logged_at:new Date().toISOString()});
       if(me)console.log("Meal save error:",me.message);
       else earnXP(10,"🍽️ Logged "+food.name+"!");
     }catch(e){console.log("Meal save exception:",e);}
@@ -1432,8 +1509,8 @@ export default function App({user,supabase}){
   }
 
   function addSM(food){addMeal(Object.assign({},food,{calories:food.calories,per:"serving"}),1);setShowSugs(false);}
-  async function removeWorkout(id){setWorkouts(workouts.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
-  async function removeMeal(id){setMeals(meals.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeWorkout(id){setWorkouts(workouts.filter(function(x){return x.id!==id;}));try{await (supabase||sbClient).from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeMeal(id){setMeals(meals.filter(function(x){return x.id!==id;}));try{await (supabase||sbClient).from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
 
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
@@ -1921,6 +1998,22 @@ export default function App({user,supabase}){
             <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:28,color:GC,lineHeight:1}}>+{xpAnim.amount} XP</div>
             <div style={{fontSize:11,color:"#888",marginTop:2}}>{xpAnim.reason}</div>
           </div>)}
+          {/* PWA Install Banner */}
+          {showInstall&&(<div style={{background:"#13131a",border:"2px solid "+GC,borderRadius:13,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:2}}>
+            <div style={{fontSize:22}}>&#128241;</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13}}>Install Lock In</div>
+              <div style={{fontSize:10,color:"#888"}}>Add to home screen for the best experience</div>
+            </div>
+            <button onClick={triggerInstall} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>Install</button>
+            <button onClick={()=>setShowInstall(false)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,padding:"0 4px"}}>x</button>
+          </div>)}
+          {/* Notification permission prompt - show if granted isn't set yet */}
+          {notifPerm==="default"&&matches.length>0&&(<div style={{background:"#13131a",border:"1px solid #3eb8f533",borderRadius:11,padding:"10px 13px",display:"flex",alignItems:"center",gap:9,marginBottom:2}}>
+            <div style={{fontSize:18}}>&#128276;</div>
+            <div style={{flex:1}}><div style={{fontWeight:600,fontSize:12}}>Enable notifications</div><div style={{fontSize:10,color:"#888"}}>Get notified of new match requests</div></div>
+            <button onClick={requestNotifPermission} style={{background:"#3eb8f522",border:"1px solid #3eb8f544",color:"#3eb8f5",borderRadius:8,padding:"6px 11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11,flexShrink:0}}>Enable</button>
+          </div>)}
           {profile.name&&(()=>{
             var li=getLevelInfo(xp);
             var prog=getXPProgress(xp);
@@ -2076,20 +2169,38 @@ export default function App({user,supabase}){
             {MB("CARBS",cE,macros.carbs,"#e8a83e")}
             {MB("FAT",fE,macros.fat,"#3eb8f5")}
           </div>
-          {meals.length===0?<div style={{textAlign:"center",padding:"26px 0",color:"#333",fontSize:12}}>No meals logged</div>
-          :meals.map(function(m){return(
-            <div key={m.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"11px 13px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:9}}>
-                <span style={{fontSize:20}}>{m.em}</span>
-                <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{m.name}</div><div style={{fontSize:10,color:"#555"}}>{m.servings}x {m.per} - {m.time}</div></div>
-                <div style={{textAlign:"right"}}><div style={{color:"#e8a83e",fontWeight:700,fontSize:13}}>+{m.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div>
-                <button className="del" onClick={()=>removeMeal(m.id)}>x</button>
-              </div>
-              <div style={{display:"flex",gap:4,marginTop:7}}>
-                {[["P",m.protein,"#c8f53e"],["C",m.carbs,"#e8a83e"],["F",m.fat,"#3eb8f5"]].map(function(x){return <div key={x[0]} style={{flex:1,background:"#0a0a0f",borderRadius:6,padding:"3px 0",textAlign:"center"}}><div style={{fontSize:7,color:"#555"}}>{x[0]}</div><div style={{fontSize:11,fontWeight:700,color:x[2]}}>{x[1]}g</div></div>;})}
-              </div>
-            </div>
-          );})}
+          {todayMeals.length===0&&<div style={{textAlign:"center",padding:"26px 0",color:"#333",fontSize:12}}>No meals logged today</div>}
+          {todayMeals.length>0&&(()=>{
+            var MEAL_TYPES=[["breakfast","&#9728;","Breakfast"],["lunch","&#127780;","Lunch"],["dinner","&#127771;","Dinner"],["snack","&#127822;","Snack"],["other","&#127869;","Other"]];
+            return MEAL_TYPES.map(function(mt){
+              var grp=todayMeals.filter(function(m){return(m.meal_type||"other")===mt[0];});
+              if(!grp.length)return null;
+              var gc=grp.reduce(function(s,m){return s+m.cal;},0);
+              var gp=Math.round(grp.reduce(function(s,m){return s+(m.protein||0);},0));
+              return(<div key={mt[0]} style={{marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:13}} dangerouslySetInnerHTML={{__html:mt[1]}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:"#e8e4dc"}}>{mt[2]}</span>
+                  </div>
+                  <div style={{display:"flex",gap:8}}><span style={{fontSize:10,color:"#e8a83e",fontWeight:700}}>{gc} kcal</span><span style={{fontSize:10,color:"#c8f53e"}}>{gp}g P</span></div>
+                </div>
+                {grp.map(function(m){return(
+                  <div key={m.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"10px 12px",marginBottom:5}}>
+                    <div style={{display:"flex",alignItems:"center",gap:9}}>
+                      <span style={{fontSize:18}}>{m.em}</span>
+                      <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name}</div><div style={{fontSize:10,color:"#555"}}>{m.servings}x {m.per} &middot; {m.time}</div></div>
+                      <div style={{textAlign:"right",flexShrink:0}}><div style={{color:"#e8a83e",fontWeight:700,fontSize:13}}>+{m.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div>
+                      <button className="del" onClick={()=>removeMeal(m.id)}>x</button>
+                    </div>
+                    <div style={{display:"flex",gap:4,marginTop:7}}>
+                      {[["P",m.protein,"#c8f53e"],["C",m.carbs,"#e8a83e"],["F",m.fat,"#3eb8f5"]].map(function(x){return <div key={x[0]} style={{flex:1,background:"#0a0a0f",borderRadius:6,padding:"3px 0",textAlign:"center"}}><div style={{fontSize:7,color:"#555"}}>{x[0]}</div><div style={{fontSize:11,fontWeight:700,color:x[2]}}>{x[1]}g</div></div>;})}
+                    </div>
+                  </div>
+                );})}
+              </div>);
+            });
+          })()}
         </div>)}
 
         {tab==="goals"&&(<div style={{display:"flex",flexDirection:"column",gap:13}}>
@@ -2240,8 +2351,84 @@ export default function App({user,supabase}){
         <div className="modal">
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}><div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:20,letterSpacing:1}}>LOG MEAL</div><button onClick={closeFood} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:7,padding:"4px 9px",cursor:"pointer"}}>x</button></div>
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3,marginBottom:12}}>
-            {[["browse","Browse"],["barcode","Barcode"],["custom","Custom"]].map(function(x){return <button key={x[0]} className="seg" onClick={()=>setFoodTab(x[0])} style={{background:foodTab===x[0]?(x[0]==="barcode"?"#e8a83e":"#1e1e2a"):"transparent",color:foodTab===x[0]?(x[0]==="barcode"?"#0a0a0f":"#e8e4dc"):"#555"}}>{x[1]}</button>;})}
+            {[["search","Search"],["browse","Browse"],["barcode","Barcode"],["custom","Custom"]].map(function(x){return <button key={x[0]} className="seg" onClick={()=>setFoodTab(x[0])} style={{background:foodTab===x[0]?(x[0]==="barcode"?"#e8a83e":x[0]==="search"?GC:"#1e1e2a"):"transparent",color:foodTab===x[0]?(x[0]==="barcode"||x[0]==="search"?"#0a0a0f":"#e8e4dc"):"#555",fontSize:9}}>{x[1]}</button>;})}
           </div>
+          {foodTab==="search"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{fontSize:10,color:"#888",textAlign:"center"}}>Search 2M+ foods. Enter grams or oz for exact macros.</div>
+            <div style={{display:"flex",gap:8}}>
+              <input className="inp" placeholder="Search (e.g. banana, oats, chicken...)" value={foodSearch}
+                onChange={function(e){setFoodSearch(e.target.value);}}
+                onKeyDown={function(e){if(e.key==="Enter")searchFoods(foodSearch);}}
+                style={{flex:1}}/>
+              <button onClick={function(){searchFoods(foodSearch);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13,flexShrink:0}}>Go</button>
+            </div>
+            {foodSearchLoading&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Searching...</div>}
+            {!foodSearchLoading&&foodSearch.length>1&&foodSearchResults.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>No results. Try a different term.</div>}
+            {foodSearchResults.length>0&&!selSearchFood&&(<div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
+              {foodSearchResults.map(function(f){return(
+                <div key={f.id} onClick={function(){setSelSearchFood(f);setSearchGrams(100);setSearchUnit("g");}}
+                  style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:9}}>
+                  {f.image?<img src={f.image} alt="" style={{width:36,height:36,borderRadius:7,objectFit:"contain",background:"#fff",padding:2,flexShrink:0}}/>:<div style={{width:36,height:36,borderRadius:7,background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>&#127869;</div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
+                    {f.brand&&<div style={{fontSize:10,color:"#555"}}>{f.brand}</div>}
+                    <div style={{fontSize:9,color:"#888",marginTop:2}}>per 100g: {f.cal100} kcal &middot; P:{f.protein100}g &middot; C:{f.carbs100}g &middot; F:{f.fat100}g</div>
+                  </div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#e8a83e",flexShrink:0,textAlign:"right"}}>{f.cal100}<br/><span style={{fontSize:8,color:"#555",fontWeight:400}}>kcal/100g</span></div>
+                </div>
+              );})}
+            </div>)}
+            {selSearchFood&&(()=>{
+              var sm=calcSearchMacros(selSearchFood,searchGrams,searchUnit);
+              return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{background:"#0a0a0f",borderRadius:12,padding:13}}>
+                  <div style={{display:"flex",gap:9,alignItems:"flex-start",marginBottom:10}}>
+                    {selSearchFood.image?<img src={selSearchFood.image} alt="" style={{width:44,height:44,borderRadius:8,objectFit:"contain",background:"#fff",padding:2,flexShrink:0}}/>:<div style={{width:44,height:44,borderRadius:8,background:"#13131a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>&#127869;</div>}
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:13}}>{selSearchFood.name}</div>
+                      {selSearchFood.brand&&<div style={{fontSize:10,color:"#555"}}>{selSearchFood.brand}</div>}
+                    </div>
+                    <button onClick={function(){setSelSearchFood(null);}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:11}}>Back</button>
+                  </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:9,color:"#555",marginBottom:4}}>AMOUNT</div>
+                      <input className="inp" type="number" inputMode="decimal" value={searchGrams}
+                        onChange={function(e){setSearchGrams(Math.max(1,+e.target.value||1));}}
+                        style={{fontSize:20,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {["g","oz"].map(function(u){return(
+                        <button key={u} onClick={function(){
+                          if(u===searchUnit)return;
+                          var ng=u==="oz"?Math.round(searchGrams/28.35*10)/10:Math.round(searchGrams*28.35);
+                          setSearchGrams(ng);setSearchUnit(u);
+                        }} style={{background:searchUnit===u?GC:"#1e1e2a",border:"1px solid "+(searchUnit===u?GC:"#2a2a3a"),color:searchUnit===u?"#0a0a0f":"#888",borderRadius:7,padding:"5px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>{u}</button>
+                      );})}
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:10}}>
+                    {[["KCAL",sm.cal,"#e8a83e"],["P",sm.protein+"g","#c8f53e"],["C",sm.carbs+"g","#e8a83e"],["F",sm.fat+"g","#3eb8f5"]].map(function(x){return(
+                      <div key={x[0]} style={{background:"#13131a",borderRadius:8,padding:"8px",textAlign:"center"}}>
+                        <div style={{fontSize:8,color:"#555",marginBottom:2}}>{x[0]}</div>
+                        <div style={{fontSize:15,fontWeight:700,color:x[2]}}>{x[1]}</div>
+                      </div>
+                    );})}
+                  </div>
+                  <div style={{fontSize:9,color:"#555",textAlign:"center",marginBottom:10}}>{searchGrams}{searchUnit} of {selSearchFood.name}</div>
+                  <div style={{display:"flex",gap:4,marginBottom:4}}>
+                    {["breakfast","lunch","dinner","snack","other"].map(function(t){return(
+                      <button key={t} onClick={()=>setMealType(t)} style={{flex:1,padding:"4px 0",borderRadius:6,border:"1px solid "+(mealType===t?"#e8a83e":"#2a2a3a"),background:mealType===t?"#e8a83e22":"transparent",color:mealType===t?"#e8a83e":"#555",fontFamily:"inherit",fontWeight:700,fontSize:8,textTransform:"capitalize",cursor:"pointer"}}>{t}</button>
+                    );})}
+                  </div>
+                </div>
+                <button className="btn" onClick={function(){
+                  var sm2=calcSearchMacros(selSearchFood,searchGrams,searchUnit);
+                  addMeal({name:selSearchFood.name+(selSearchFood.brand?" ("+selSearchFood.brand+")":""),em:EM.plate,calories:sm2.cal,protein:sm2.protein,carbs:sm2.carbs,fat:sm2.fat,per:searchGrams+searchUnit},1);
+                }} style={{background:"#e8a83e",color:"#0a0a0f"}}>Log {sm.cal} kcal &rarr;</button>
+              </div>);
+            })()}
+          </div>)}
           {foodTab==="browse"&&(<div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:11}}>
               {FOOD_DATA.map(function(f){return <div key={f.name} className={"exc "+(selFood&&selFood.name===f.name?"on":"")} onClick={()=>setSelFood(f)}><div style={{fontSize:17,marginBottom:2}}>{f.em}</div><div style={{fontSize:11,fontWeight:700}}>{f.name}</div><div style={{fontSize:9,color:"#555"}}>{f.calories} kcal/{f.per}</div></div>;})}
@@ -2253,6 +2440,11 @@ export default function App({user,supabase}){
                 {[["P",Math.round(selFood.protein*foodSrv),"#c8f53e"],["C",Math.round(selFood.carbs*foodSrv),"#e8a83e"],["F",Math.round(selFood.fat*foodSrv),"#3eb8f5"]].map(function(x){return <div key={x[0]} style={{flex:1,background:"#0a0a0f",borderRadius:7,padding:"5px",textAlign:"center"}}><div style={{fontSize:8,color:"#555"}}>{x[0]}</div><div style={{fontSize:12,fontWeight:700,color:x[2]}}>{x[1]}g</div></div>;})}
               </div>
             </div>)}
+            <div style={{display:"flex",gap:4,marginBottom:8}}>
+              {["breakfast","lunch","dinner","snack","other"].map(function(t){return(
+                <button key={t} onClick={()=>setMealType(t)} style={{flex:1,padding:"4px 0",borderRadius:6,border:"1px solid "+(mealType===t?"#e8a83e":"#2a2a3a"),background:mealType===t?"#e8a83e22":"transparent",color:mealType===t?"#e8a83e":"#555",fontFamily:"inherit",fontWeight:700,fontSize:8,textTransform:"capitalize",cursor:"pointer"}}>{t}</button>
+              );})}
+            </div>
             <button className="btn" onClick={()=>addMeal(selFood,foodSrv)} disabled={!selFood} style={{background:selFood?"#e8a83e":"#1e1e2a",color:selFood?"#0a0a0f":"#555"}}>Add Meal</button>
           </div>)}
           {foodTab==="barcode"&&(<div style={{display:"flex",flexDirection:"column",gap:11}}>
