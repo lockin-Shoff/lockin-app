@@ -1209,7 +1209,8 @@ export default function App({user,supabase}){
     var ts=moves.reduce(function(s,m){return s+m.sets.length;},0);
     var ds=moves.reduce(function(s,m){return s+m.sets.filter(function(x){return x.done;}).length;},0);
     var c=Math.round((timer.elapsed/60)*7);
-    setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,totalSets:ts,doneSets:ds}]));
+    var recNow=new Date().toISOString();
+    setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",logged_at:recNow,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,sets:(()=>{var s=[];moves.forEach(function(mv){mv.sets.forEach(function(st){s.push(Object.assign({exercise:mv.name},st));});});return s;})(),totalSets:ts,doneSets:ds}]));
     setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
     if(user&&supabase){
       try{
