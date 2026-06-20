@@ -985,6 +985,8 @@ export default function App({user,supabase}){
   var barRef=useRef(null);
   var[showProgress,setShowProgress]=useState(false);
   var[progressEx,setProgressEx]=useState("");
+  var[historyTab,setHistoryTab]=useState("calories");
+  var[historyRange,setHistoryRange]=useState(30);
 
   var wKg=profile.wLbs?+profile.wLbs*0.453592:0;
   var hCm=(+profile.hFt*30.48)+(+profile.hIn*2.54);
@@ -1045,7 +1047,7 @@ export default function App({user,supabase}){
       // Meals load last 60 days
       var d60=new Date();d60.setDate(d60.getDate()-60);
       var{data:ms}=await sb.from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString().split("T")[0]).order("logged_at",{ascending:false});
-      if(ms&&ms.length)setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};}));
+      if(ms&&ms.length)setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",logged_at:m.logged_at,time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};}));
       setDbLoaded(true);
     }
     loadAll();
@@ -1160,11 +1162,14 @@ export default function App({user,supabase}){
     }catch(e){}
   }
 
-  var calB=workouts.reduce(function(s,w){return s+w.cal;},0);
-  var calE=meals.reduce(function(s,m){return s+m.cal;},0);
-  var pE=meals.reduce(function(s,m){return s+(m.protein||0);},0);
-  var cE=meals.reduce(function(s,m){return s+(m.carbs||0);},0);
-  var fE=meals.reduce(function(s,m){return s+(m.fat||0);},0);
+  var todayStr=new Date().toISOString().split("T")[0];
+  var todayWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at.startsWith(todayStr);});
+  var todayMeals=meals.filter(function(m){return m.logged_at&&m.logged_at.startsWith(todayStr);});
+  var calB=todayWorkouts.reduce(function(s,w){return s+w.cal;},0);
+  var calE=todayMeals.reduce(function(s,m){return s+m.cal;},0);
+  var pE=todayMeals.reduce(function(s,m){return s+(m.protein||0);},0);
+  var cE=todayMeals.reduce(function(s,m){return s+(m.carbs||0);},0);
+  var fE=todayMeals.reduce(function(s,m){return s+(m.fat||0);},0);
   var netCal=calE-calB;
   var calLeft=calGoal-netCal;
   var ring=Math.min((netCal/calGoal)*100,100);
@@ -1274,6 +1279,258 @@ export default function App({user,supabase}){
     +"@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}";
 
   var base={minHeight:"100vh",background:"#0a0a0f",color:"#e8e4dc",fontFamily:"DM Sans,sans-serif",maxWidth:480,margin:"0 auto"};
+
+
+  // ── History Screen ──────────────────────────────────────────
+  if(screen==="history"){
+    var hTab=historyTab;
+    var ranges=[["1M",30],["3M",90],["6M",180],["1Y",365]];
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-historyRange);
+    var cutStr=cutoff.toISOString().split("T")[0];
+
+    // Filter workouts/meals to selected range
+    var rngWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at>=cutStr;});
+    var rngMeals=meals.filter(function(m){return m.logged_at&&m.logged_at>=cutStr;});
+
+    // Group workouts by date
+    var wByDate={};
+    rngWorkouts.forEach(function(w){
+      var d=w.logged_at?w.logged_at.split("T")[0]:"";
+      if(!wByDate[d])wByDate[d]=[];
+      wByDate[d].push(w);
+    });
+
+    // Group meals by date
+    var mByDate={};
+    rngMeals.forEach(function(m){
+      var d=m.logged_at?m.logged_at.split("T")[0]:"";
+      if(!mByDate[d])mByDate[d]=[];
+      mByDate[d].push(m);
+    });
+
+    // Build chart data - calories per day for last N days
+    var chartDays=[];
+    for(var di=historyRange-1;di>=0;di--){
+      var dd=new Date();dd.setDate(dd.getDate()-di);
+      var ds=dd.toISOString().split("T")[0];
+      var wCal=(wByDate[ds]||[]).reduce(function(s,w){return s+w.cal;},0);
+      var mCal=(mByDate[ds]||[]).reduce(function(s,m){return s+m.cal;},0);
+      chartDays.push({date:ds,label:dd.toLocaleDateString([],{month:"short",day:"numeric"}),burned:wCal,eaten:mCal,net:mCal-wCal});
+    }
+
+    // Chart dims
+    var cW=320,cH=100,cPad=28;
+    var maxCal=Math.max.apply(null,chartDays.map(function(d){return Math.max(d.eaten,d.burned,1);}));
+    function cx(i){return cPad+(i/(chartDays.length-1||1))*cW;}
+    function cy(v){return cPad+cH-(v/maxCal)*cH;}
+
+    // All dates combined for list view
+    var allDates=[...new Set(
+      Object.keys(wByDate).concat(Object.keys(mByDate))
+    )].sort().reverse();
+
+    return(
+      <div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e8e4dc",fontFamily:"DM Sans,sans-serif",maxWidth:480,margin:"0 auto"}}>
+        <style>{css}</style>
+        <div style={{position:"sticky",top:0,background:"#0a0a0f",borderBottom:"1px solid #1a1a22",padding:"12px 14px",zIndex:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <button onClick={()=>setScreen("main")} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:9,padding:"7px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Back</button>
+            <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:22,letterSpacing:1,color:GC}}>HISTORY</div>
+          </div>
+          {/* Range selector */}
+          <div style={{display:"flex",gap:4}}>
+            {ranges.map(function(r){return(
+              <button key={r[0]} onClick={()=>setHistoryRange(r[1])} style={{flex:1,padding:"6px 0",borderRadius:7,border:"1px solid "+(historyRange===r[1]?GC:"#2a2a3a"),background:historyRange===r[1]?GC+"22":"transparent",color:historyRange===r[1]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:11,cursor:"pointer"}}>{r[0]}</button>
+            );})}
+          </div>
+        </div>
+
+        <div style={{padding:"14px",paddingBottom:80}}>
+          {/* Tab selector */}
+          <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3,marginBottom:14,border:"1px solid #1a1a22"}}>
+            {[["calories","Calories"],["workouts","Workouts"],["nutrition","Nutrition"]].map(function(x){return(
+              <button key={x[0]} onClick={()=>setHistoryTab(x[0])} style={{flex:1,padding:"7px 0",borderRadius:6,border:"none",cursor:"pointer",background:hTab===x[0]?"#1e1e2a":"transparent",color:hTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:10,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>
+            );})}
+          </div>
+
+          {/* CALORIES GRAPH TAB */}
+          {hTab==="calories"&&(<div>
+            <div style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:14,padding:14,marginBottom:12}}>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:10}}>DAILY CALORIES</div>
+              <svg width="100%" viewBox={"0 0 "+(cW+cPad*2)+" "+(cH+cPad*2+10)} style={{overflow:"visible"}}>
+                <defs>
+                  <linearGradient id="eatGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#e8a83e" stopOpacity="0.4"/><stop offset="100%" stopColor="#e8a83e" stopOpacity="0"/></linearGradient>
+                  <linearGradient id="burnGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={GC} stopOpacity="0.4"/><stop offset="100%" stopColor={GC} stopOpacity="0"/></linearGradient>
+                </defs>
+                {/* Grid */}
+                {[0,0.5,1].map(function(t){
+                  var y=cPad+cH*t;
+                  return <line key={t} x1={cPad} y1={y} x2={cPad+cW} y2={y} stroke="#1e1e2a" strokeWidth="1"/>;
+                })}
+                {/* Eaten area */}
+                {chartDays.length>1&&(()=>{
+                  var pts=chartDays.map(function(d,i){return cx(i)+","+cy(d.eaten);});
+                  var area=pts.join(" ")+" "+(cPad+cW)+","+(cPad+cH)+" "+cPad+","+(cPad+cH);
+                  return <polygon points={area} fill="url(#eatGrad)"/>;
+                })()}
+                {/* Burned area */}
+                {chartDays.length>1&&(()=>{
+                  var pts=chartDays.map(function(d,i){return cx(i)+","+cy(d.burned);});
+                  var area=pts.join(" ")+" "+(cPad+cW)+","+(cPad+cH)+" "+cPad+","+(cPad+cH);
+                  return <polygon points={area} fill="url(#burnGrad)"/>;
+                })()}
+                {/* Eaten line */}
+                {chartDays.length>1&&(()=>{
+                  var d=chartDays.map(function(p,i){return(i===0?"M":"L")+cx(i)+","+cy(p.eaten);}).join(" ");
+                  return <path d={d} fill="none" stroke="#e8a83e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+                })()}
+                {/* Burned line */}
+                {chartDays.length>1&&(()=>{
+                  var d=chartDays.map(function(p,i){return(i===0?"M":"L")+cx(i)+","+cy(p.burned);}).join(" ");
+                  return <path d={d} fill="none" stroke={GC} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+                })()}
+                {/* X labels - show a few */}
+                {chartDays.filter(function(_,i){var step=Math.floor(chartDays.length/4);return i===0||i===chartDays.length-1||(step>0&&i%step===0);}).map(function(d,i){
+                  var origIdx=chartDays.indexOf(d);
+                  return <text key={i} x={cx(origIdx)} y={cPad+cH+18} textAnchor="middle" fill="#444" fontSize="8">{d.label}</text>;
+                })}
+              </svg>
+              <div style={{display:"flex",gap:12,justifyContent:"center",marginTop:4}}>
+                <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:10,height:3,background:"#e8a83e",borderRadius:2}}/><span style={{fontSize:9,color:"#888"}}>Eaten</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:10,height:3,background:GC,borderRadius:2}}/><span style={{fontSize:9,color:"#888"}}>Burned</span></div>
+              </div>
+            </div>
+            {/* Summary stats */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:14}}>
+              {[
+                ["Avg Eaten",Math.round(rngMeals.reduce(function(s,m){return s+m.cal;},0)/(rngWorkouts.length||1))+" kcal","#e8a83e"],
+                ["Avg Burned",Math.round(rngWorkouts.reduce(function(s,w){return s+w.cal;},0)/(rngWorkouts.length||1))+" kcal",GC],
+                ["Active Days",Object.keys(wByDate).length,"#3eb8f5"],
+              ].map(function(x){return(
+                <div key={x[0]} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
+                  <div style={{fontSize:8,color:"#555",marginBottom:4}}>{x[0]}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:x[2]}}>{x[1]}</div>
+                </div>
+              );})}
+            </div>
+            {/* Daily list */}
+            {allDates.slice(0,30).map(function(d){
+              var dw=wByDate[d]||[];
+              var dm=mByDate[d]||[];
+              var dc=dm.reduce(function(s,m){return s+m.cal;},0);
+              var db=dw.reduce(function(s,w){return s+w.cal;},0);
+              var label=new Date(d+"T12:00:00").toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+              return(
+                <div key={d} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"11px 13px",marginBottom:7}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:dw.length>0||dm.length>0?8:0}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{label}</div>
+                    <div style={{display:"flex",gap:10}}>
+                      {dc>0&&<span style={{fontSize:11,color:"#e8a83e",fontWeight:700}}>+{dc}</span>}
+                      {db>0&&<span style={{fontSize:11,color:GC,fontWeight:700}}>-{db}</span>}
+                    </div>
+                  </div>
+                  {dw.map(function(w){return(
+                    <div key={w.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 0"}}>
+                      <span style={{fontSize:13}}>{w.em}</span>
+                      <span style={{fontSize:11,color:"#888",flex:1}}>{w.name}</span>
+                      <span style={{fontSize:10,color:GC}}>{w.dur}min</span>
+                      <span style={{fontSize:10,color:GC,fontWeight:700}}>-{w.cal}</span>
+                    </div>
+                  );})}
+                  {dm.map(function(m){return(
+                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 0"}}>
+                      <span style={{fontSize:13}}>{m.em}</span>
+                      <span style={{fontSize:11,color:"#888",flex:1}}>{m.name}</span>
+                      <span style={{fontSize:10,color:"#e8a83e",fontWeight:700}}>+{m.cal}</span>
+                    </div>
+                  );})}
+                </div>
+              );
+            })}
+          </div>)}
+
+          {/* WORKOUTS TAB */}
+          {hTab==="workouts"&&(<div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:14}}>
+              {[["Sessions",rngWorkouts.length,GC],["Total Burned",rngWorkouts.reduce(function(s,w){return s+w.cal;},0)+" kcal","#e8a83e"],["Avg Duration",Math.round(rngWorkouts.reduce(function(s,w){return s+w.dur;},0)/(rngWorkouts.length||1))+" min","#3eb8f5"],["Active Days",Object.keys(wByDate).length,"#b03ef5"]].map(function(x){return(
+                <div key={x[0]} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:10,padding:"10px",textAlign:"center"}}>
+                  <div style={{fontSize:8,color:"#555",marginBottom:4}}>{x[0]}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:x[2]}}>{x[1]}</div>
+                </div>
+              );})}
+            </div>
+            {rngWorkouts.length===0&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>No workouts in this period</div>}
+            {rngWorkouts.map(function(w){return(
+              <div key={w.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"11px 13px",marginBottom:7}}>
+                <div style={{display:"flex",alignItems:"center",gap:9}}>
+                  <span style={{fontSize:20}}>{w.em}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{w.name}</div>
+                    <div style={{fontSize:10,color:"#555"}}>{w.date||w.time} &bull; {w.dur} min &bull; {w.cat}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}><div style={{color:GC,fontWeight:700}}>{w.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div>
+                </div>
+                {w.sets&&w.sets.length>0&&(<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1a1a22"}}>
+                  {(()=>{
+                    var exs={};
+                    w.sets.forEach(function(s){if(s.exercise){if(!exs[s.exercise])exs[s.exercise]=[];exs[s.exercise].push(s);}});
+                    return Object.keys(exs).map(function(ex){return(
+                      <div key={ex} style={{marginBottom:5}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#888",marginBottom:3}}>{ex}</div>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {exs[ex].map(function(s,i){return <div key={i} style={{background:"#0a0a0f",borderRadius:5,padding:"2px 7px",fontSize:9,color:s.done?GC:"#555"}}>{s.reps||"-"}{s.weight?" @ "+s.weight+" lbs":""}</div>;})}
+                        </div>
+                      </div>
+                    );});
+                  })()}
+                </div>)}
+              </div>
+            );})}
+          </div>)}
+
+          {/* NUTRITION TAB */}
+          {hTab==="nutrition"&&(<div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:14}}>
+              {[["Total Meals",rngMeals.length,"#e8a83e"],["Total Calories",rngMeals.reduce(function(s,m){return s+m.cal;},0),"#e8a83e"],["Avg Protein",Math.round(rngMeals.reduce(function(s,m){return s+(m.protein||0);},0)/(Object.keys(mByDate).length||1))+"g/day","#c8f53e"],["Avg Carbs",Math.round(rngMeals.reduce(function(s,m){return s+(m.carbs||0);},0)/(Object.keys(mByDate).length||1))+"g/day","#3eb8f5"]].map(function(x){return(
+                <div key={x[0]} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:10,padding:"10px",textAlign:"center"}}>
+                  <div style={{fontSize:8,color:"#555",marginBottom:4}}>{x[0]}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:x[2]}}>{x[1]}</div>
+                </div>
+              );})}
+            </div>
+            {rngMeals.length===0&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>No meals logged in this period</div>}
+            {allDates.filter(function(d){return mByDate[d];}).map(function(d){
+              var dm=mByDate[d]||[];
+              var dc=dm.reduce(function(s,m){return s+m.cal;},0);
+              var dp=Math.round(dm.reduce(function(s,m){return s+(m.protein||0);},0));
+              var label=new Date(d+"T12:00:00").toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+              return(
+                <div key={d} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"11px 13px",marginBottom:7}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{label}</div>
+                    <div style={{display:"flex",gap:10}}>
+                      <span style={{fontSize:10,color:"#e8a83e",fontWeight:700}}>{dc} kcal</span>
+                      <span style={{fontSize:10,color:"#c8f53e"}}>{dp}g P</span>
+                    </div>
+                  </div>
+                  {dm.map(function(m){return(
+                    <div key={m.id} style={{display:"flex",alignItems:"center",gap:7,padding:"4px 0",borderBottom:"1px solid #0f0f18"}}>
+                      <span style={{fontSize:14}}>{m.em}</span>
+                      <span style={{fontSize:11,color:"#c0bdb5",flex:1}}>{m.name}</span>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:10,color:"#e8a83e",fontWeight:700}}>{m.cal} kcal</div>
+                        <div style={{fontSize:9,color:"#555"}}>P:{m.protein}g C:{m.carbs}g F:{m.fat}g</div>
+                      </div>
+                    </div>
+                  );})}
+                </div>
+              );
+            })}
+          </div>)}
+        </div>
+      </div>
+    );
+  }
 
   // Chat screen
   if(activeChat) return(
@@ -1515,10 +1772,14 @@ export default function App({user,supabase}){
             <div style={{fontSize:10,color:"#888",marginTop:4,marginBottom:4}}>Snack Ideas</div>
             {(sugs.snacks||[]).map(function(s,i){return <div key={i} className="sug"><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:12}}>{s.name}</div><div style={{fontSize:10,color:"#555"}}>{s.reason}</div></div><div style={{textAlign:"right",flexShrink:0,marginLeft:7}}><div style={{color:"#e8a83e",fontWeight:700,fontSize:11}}>{s.calories} kcal</div><div style={{fontSize:9,color:"#555"}}>P:{s.protein}g C:{s.carbs}g F:{s.fat}g</div><button onClick={()=>addSM(s)} style={{background:GC+"22",border:"none",color:GC,borderRadius:6,padding:"2px 7px",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:700,marginTop:3}}>+ Log</button></div></div></div>;})}
           </div>)}
-          {(workouts.length>0||meals.length>0)&&(<div>
-            <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:7}}>TODAY</div>
-            {workouts.concat(meals.map(function(m){return Object.assign({},m,{type:"meal"});})).slice(-6).reverse().map(function(item){return <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,background:"#13131a",border:"1px solid #1e1e2a",borderRadius:9,padding:"8px 11px",marginBottom:5}}><span style={{fontSize:15}}>{item.em}</span><div style={{flex:1}}><div style={{fontSize:12,fontWeight:500}}>{item.name}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:11,fontWeight:700,color:item.type==="meal"?"#e8a83e":GC}}>{item.type==="meal"?"+":"-"}{item.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div></div>;})}
+          {(todayWorkouts.length>0||todayMeals.length>0)&&(<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1}}>TODAY</div>
+              <button onClick={()=>setScreen("history")} style={{background:"none",border:"none",color:GC,fontSize:10,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>History &rarr;</button>
+            </div>
+            {todayWorkouts.concat(todayMeals.map(function(m){return Object.assign({},m,{type:"meal"});})).slice(-6).reverse().map(function(item){return <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,background:"#13131a",border:"1px solid #1e1e2a",borderRadius:9,padding:"8px 11px",marginBottom:5}}><span style={{fontSize:15}}>{item.em}</span><div style={{flex:1}}><div style={{fontSize:12,fontWeight:500}}>{item.name}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:11,fontWeight:700,color:item.type==="meal"?"#e8a83e":GC}}>{item.type==="meal"?"+":"-"}{item.cal}</div><div style={{fontSize:8,color:"#555"}}>kcal</div></div></div>;})}
           </div>)}
+          {todayWorkouts.length===0&&todayMeals.length===0&&(<div style={{textAlign:"center"}}><button onClick={()=>setScreen("history")} style={{background:"none",border:"none",color:"#555",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>View history &rarr;</button></div>)}
         </div>)}
 
         {tab==="workouts"&&(<div style={{display:"flex",flexDirection:"column",gap:11}}>
