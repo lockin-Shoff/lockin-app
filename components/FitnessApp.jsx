@@ -1042,12 +1042,20 @@ export default function App({user,supabase}){
       var today=new Date().toISOString().split("T")[0];
       // Load workouts for last 365 days with sets for progress tracking
       var d365=new Date();d365.setDate(d365.getDate()-365);
-      var{data:ws}=await sb.from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",d365.toISOString().split("T")[0]).order("logged_at",{ascending:false}).limit(200);
-      if(ws&&ws.length)setWorkouts(ws.map(function(w){return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",logged_at:w.logged_at,time:new Date(w.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:new Date(w.logged_at).toLocaleDateString([],{month:"short",day:"numeric"}),sets:w.workout_sets||[],moves:[]};}));
+      var{data:ws}=await sb.from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",d365.toISOString()).order("logged_at",{ascending:false}).limit(200);
+      if(ws&&ws.length)setWorkouts(ws.map(function(w){
+        var localDate=new Date(w.logged_at);
+        var localDateStr=localDate.getFullYear()+"-"+String(localDate.getMonth()+1).padStart(2,"0")+"-"+String(localDate.getDate()).padStart(2,"0");
+        return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",logged_at:localDateStr,time:localDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:localDate.toLocaleDateString([],{month:"short",day:"numeric"}),sets:w.workout_sets||[],moves:[]};
+      }));
       // Meals load last 60 days
       var d60=new Date();d60.setDate(d60.getDate()-60);
-      var{data:ms}=await sb.from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString().split("T")[0]).order("logged_at",{ascending:false});
-      if(ms&&ms.length)setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",logged_at:m.logged_at,time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};}));
+      var{data:ms}=await sb.from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString()).order("logged_at",{ascending:false});
+      if(ms&&ms.length)setMeals(ms.map(function(m){
+        var localDate=new Date(m.logged_at);
+        var localDateStr=localDate.getFullYear()+"-"+String(localDate.getMonth()+1).padStart(2,"0")+"-"+String(localDate.getDate()).padStart(2,"0");
+        return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",logged_at:localDateStr,time:localDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+      }));
       setDbLoaded(true);
     }
     loadAll();
@@ -1162,7 +1170,8 @@ export default function App({user,supabase}){
     }catch(e){}
   }
 
-  var todayStr=new Date().toISOString().split("T")[0];
+  var _tn=new Date();
+  var todayStr=_tn.getFullYear()+"-"+String(_tn.getMonth()+1).padStart(2,"0")+"-"+String(_tn.getDate()).padStart(2,"0");
   var todayWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at.startsWith(todayStr);});
   var todayMeals=meals.filter(function(m){return m.logged_at&&m.logged_at.startsWith(todayStr);});
   var calB=todayWorkouts.reduce(function(s,w){return s+w.cal;},0);
@@ -1182,7 +1191,10 @@ export default function App({user,supabase}){
     var nowIso=new Date().toISOString();
     setWorkouts(workouts.concat([{id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,logged_at:nowIso,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),sets:[]}]));
     closeEx();
-    if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c});}catch(e){}
+    try{
+      var{error:we}=await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c,logged_at:new Date().toISOString()});
+      if(we)console.log("Workout save error:",we.message);
+    }catch(e){console.log("Workout save exception:",e);}
   }
 
   async function addCW(){
@@ -1245,7 +1257,10 @@ export default function App({user,supabase}){
     var nowIso3=new Date().toISOString();
     var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",logged_at:nowIso3,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
     setMeals(meals.concat([newM]));closeFood();
-    if(user&&supabase)try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving"});}catch(e){}
+    try{
+      var{error:me}=await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving",logged_at:new Date().toISOString()});
+      if(me)console.log("Meal save error:",me.message);
+    }catch(e){console.log("Meal save exception:",e);}
   }
 
   async function addCM(){
@@ -2051,10 +2066,36 @@ export default function App({user,supabase}){
             <div style={{display:"flex",gap:8}}>
               <input ref={barRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={function(e){
                 var file=e.target.files&&e.target.files[0];if(!file)return;
-                if(typeof BarcodeDetector!=="undefined"){var img=new Image();img.onload=function(){var bd=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39"]});bd.detect(img).then(function(codes){if(codes&&codes.length>0){setBarInput(codes[0].rawValue);lookupBarcode(codes[0].rawValue);}else setBarState("notfound");}).catch(function(){setBarState("error");});URL.revokeObjectURL(img.src);};img.src=URL.createObjectURL(file);}else{setBarState("nosupport");}
+                setBarState("scanning");
+                // Try BarcodeDetector API first (Chrome/Android)
+                if(typeof BarcodeDetector!=="undefined"){
+                  var img=new Image();
+                  img.onload=function(){
+                    var bd=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"]});
+                    bd.detect(img).then(function(codes){
+                      if(codes&&codes.length>0){setBarInput(codes[0].rawValue);lookupBarcode(codes[0].rawValue);}
+                      else{setBarState("nosupport");}
+                    }).catch(function(){setBarState("nosupport");});
+                    URL.revokeObjectURL(img.src);
+                  };
+                  img.onerror=function(){setBarState("error");};
+                  img.src=URL.createObjectURL(file);
+                } else {
+                  // BarcodeDetector not available (Safari/iOS) - show manual entry hint
+                  setBarState("nosupport");
+                }
               }}/>
-              <button onClick={function(){if(barRef.current){barRef.current.setAttribute("capture","environment");barRef.current.click();}}} style={{flex:1,background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:9,padding:"10px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12}}>Camera Scan</button>
+              <button onClick={function(){
+                if(barRef.current){
+                  barRef.current.value="";
+                  barRef.current.click();
+                }
+              }} style={{flex:1,background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:9,padding:"10px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12}}>📷 Scan Barcode</button>
             </div>
+            {barState==="nosupport"&&(<div style={{background:"#1a1a2a",border:"1px solid #3eb8f544",borderRadius:11,padding:"12px 14px"}}>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:4,color:"#3eb8f5"}}>Camera scan not supported on Safari</div>
+              <div style={{fontSize:11,color:"#888",lineHeight:1.6}}>iPhone Safari doesn't support barcode detection. Find the barcode number printed under the lines on your product and type it above — it's usually 12-13 digits.</div>
+            </div>)}
             {barState==="scanning"&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Looking up product...</div>}
             {barState==="notfound"&&<div style={{background:"#2a2010",border:"1px solid #e8a83e44",borderRadius:11,padding:"12px 14px",textAlign:"center",fontSize:12,color:"#e8a83e"}}>Product not found</div>}
             {barState==="error"&&<div style={{background:"#2a1515",border:"1px solid #ff555544",borderRadius:11,padding:"12px 14px",textAlign:"center",fontSize:12,color:"#ff8888"}}>Lookup failed</div>}
