@@ -934,6 +934,79 @@ function ProgressChart({workouts,exerciseName,GC}){
   );
 }
 
+
+// ── XP & Level System ────────────────────────────────────────
+var LEVELS=[
+  {min:0,max:499,level:1,title:"Rookie",em:"🥉",color:"#cd7f32"},
+  {min:500,max:999,level:2,title:"Rookie",em:"🥉",color:"#cd7f32"},
+  {min:1000,max:1999,level:3,title:"Rookie",em:"🥉",color:"#cd7f32"},
+  {min:2000,max:3499,level:4,title:"Rookie",em:"🥉",color:"#cd7f32"},
+  {min:3500,max:4999,level:5,title:"Rookie",em:"🥉",color:"#cd7f32"},
+  {min:5000,max:7499,level:6,title:"Hustler",em:"💪",color:"#c0c0c0"},
+  {min:7500,max:9999,level:7,title:"Hustler",em:"💪",color:"#c0c0c0"},
+  {min:10000,max:12999,level:8,title:"Hustler",em:"💪",color:"#c0c0c0"},
+  {min:13000,max:16999,level:9,title:"Hustler",em:"💪",color:"#c0c0c0"},
+  {min:17000,max:21999,level:10,title:"Hustler",em:"💪",color:"#c0c0c0"},
+  {min:22000,max:27999,level:11,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:28000,max:34999,level:12,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:35000,max:42999,level:13,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:43000,max:51999,level:14,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:52000,max:62999,level:15,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:63000,max:75999,level:16,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:76000,max:90999,level:17,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:91000,max:109999,level:18,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:110000,max:129999,level:19,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:130000,max:154999,level:20,title:"Grinder",em:"⚙️",color:"#3eb8f5"},
+  {min:155000,max:184999,level:21,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:185000,max:219999,level:22,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:220000,max:259999,level:23,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:260000,max:304999,level:24,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:305000,max:354999,level:25,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:355000,max:409999,level:26,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:410000,max:469999,level:27,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:470000,max:534999,level:28,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:535000,max:604999,level:29,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:605000,max:699999,level:30,title:"Beast",em:"🔥",color:"#ff6b35"},
+  {min:700000,max:799999,level:31,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:800000,max:909999,level:32,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:910000,max:1029999,level:33,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1030000,max:1164999,level:34,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1165000,max:1314999,level:35,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1315000,max:1479999,level:36,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1480000,max:1659999,level:37,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1660000,max:1854999,level:38,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:1855000,max:2064999,level:39,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:2065000,max:2299999,level:40,title:"Elite",em:"⚡",color:"#b03ef5"},
+  {min:2300000,max:2599999,level:41,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:2600000,max:2949999,level:42,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:2950000,max:3349999,level:43,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:3350000,max:3799999,level:44,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:3800000,max:4299999,level:45,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:4300000,max:4849999,level:46,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:4850000,max:5449999,level:47,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:5450000,max:6099999,level:48,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:6100000,max:6799999,level:49,title:"Legend",em:"👑",color:"#f5c842"},
+  {min:6800000,max:Infinity,level:50,title:"Legend",em:"👑",color:"#f5c842"},
+];
+
+function getLevelInfo(xp){
+  return LEVELS.find(function(l){return xp>=l.min&&xp<=l.max;})||LEVELS[0];
+}
+
+function getXPToNext(xp){
+  var l=getLevelInfo(xp);
+  if(l.max===Infinity)return 0;
+  return l.max-xp+1;
+}
+
+function getXPProgress(xp){
+  var l=getLevelInfo(xp);
+  if(l.max===Infinity)return 100;
+  var range=l.max-l.min+1;
+  var prog=xp-l.min;
+  return Math.round((prog/range)*100);
+}
+
 export default function App({user,supabase}){
   var[screen,setScreen]=useState("main");
   var[tab,setTab]=useState("dashboard");
@@ -987,6 +1060,10 @@ export default function App({user,supabase}){
   var[progressEx,setProgressEx]=useState("");
   var[historyTab,setHistoryTab]=useState("calories");
   var[historyRange,setHistoryRange]=useState(30);
+  var[xp,setXp]=useState(0);
+  var[streak,setStreak]=useState(0);
+  var[streakFreezes,setStreakFreezes]=useState(0);
+  var[xpAnim,setXpAnim]=useState(null);
 
   var wKg=profile.wLbs?+profile.wLbs*0.453592:0;
   var hCm=(+profile.hFt*30.48)+(+profile.hIn*2.54);
@@ -1025,6 +1102,9 @@ export default function App({user,supabase}){
         setProfile(prof);
         if(p.goal)setGoal(p.goal);
         if(p.cal_goal)setCalGoal(p.cal_goal);
+        if(p.xp)setXp(p.xp);
+        if(p.streak)setStreak(p.streak);
+        if(p.streak_freezes)setStreakFreezes(p.streak_freezes);
         var mac=null;
         if(p.macro_protein||p.macro_carbs||p.macro_fat){
           mac={protein:p.macro_protein||150,carbs:p.macro_carbs||200,fat:p.macro_fat||65};
@@ -1126,6 +1206,53 @@ export default function App({user,supabase}){
   function getGoalColor(g){return g==="bulk"?"#c8f53e":g==="shred"?"#ff6b35":g==="endurance"?"#b03ef5":"#3eb8f5";}
   function getGoalLabel(g){return g==="bulk"?"Bulk":g==="shred"?"Shred":g==="endurance"?"Endurance":"Maintain";}
 
+  async function earnXP(amount,reason){
+    var sb=supabase||sbClient;
+    var newXp=xp+amount;
+    setXp(newXp);
+    setXpAnim({amount,reason});
+    setTimeout(function(){setXpAnim(null);},2500);
+    // Update streak - check if already active today
+    var todayLocal=new Date();
+    var todayStr2=todayLocal.getFullYear()+"-"+String(todayLocal.getMonth()+1).padStart(2,"0")+"-"+String(todayLocal.getDate()).padStart(2,"0");
+    var newLevel=getLevelInfo(newXp).level;
+    try{
+      await sb.from("profiles").update({
+        xp:newXp,
+        level:newLevel,
+        last_active:todayStr2,
+      }).eq("id",user.id);
+    }catch(e){console.log("XP save error:",e);}
+  }
+
+  async function checkAndUpdateStreak(){
+    var sb=supabase||sbClient;
+    try{
+      var{data:p}=await sb.from("profiles").select("last_active,streak,streak_freezes").eq("id",user.id).single();
+      if(!p)return;
+      var today=new Date();
+      var todayStr3=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+      var yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
+      var yStr=yesterday.getFullYear()+"-"+String(yesterday.getMonth()+1).padStart(2,"0")+"-"+String(yesterday.getDate()).padStart(2,"0");
+      var last=p.last_active;
+      var newStreak=p.streak||0;
+      var newFreezes=p.streak_freezes||0;
+      if(last===todayStr3){return;}// Already active today
+      else if(last===yStr){newStreak+=1;}// Consecutive day
+      else if(last&&newFreezes>0){newStreak+=1;newFreezes-=1;}// Use freeze
+      else{newStreak=1;}// Reset
+      // Award freeze every 7 days
+      if(newStreak>0&&newStreak%7===0)newFreezes=Math.min(newFreezes+1,3);
+      setStreak(newStreak);
+      setStreakFreezes(newFreezes);
+      await sb.from("profiles").update({streak:newStreak,streak_freezes:newFreezes,last_active:todayStr3}).eq("id",user.id);
+      // Streak XP bonus
+      var streakXp=20*Math.min(newStreak,10);
+      earnXP(streakXp,"🔥 Streak day "+newStreak+"!");
+    }catch(e){console.log("Streak error:",e);}
+  }
+  function getGoalLabel(g){return g==="bulk"?"Bulk":g==="shred"?"Shred":g==="endurance"?"Endurance":"Maintain";}
+
   useEffect(function(){if(!macLocked)setMacros(calcMacros(calGoal,goal));},[goal,calGoal,macLocked]);
 
   async function saveProfile(p,g,cg,mac){
@@ -1194,6 +1321,11 @@ export default function App({user,supabase}){
     try{
       var{error:we}=await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c,logged_at:new Date().toISOString()});
       if(we)console.log("Workout save error:",we.message);
+      else{
+        var xpAmt=50+(exDur>=30?25:0);
+        earnXP(xpAmt,"💪 Logged "+selEx.name+"!");
+        checkAndUpdateStreak();
+      }
     }catch(e){console.log("Workout save exception:",e);}
   }
 
@@ -1260,6 +1392,7 @@ export default function App({user,supabase}){
     try{
       var{error:me}=await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving",logged_at:new Date().toISOString()});
       if(me)console.log("Meal save error:",me.message);
+      else earnXP(10,"🍽️ Logged "+food.name+"!");
     }catch(e){console.log("Meal save exception:",e);}
   }
 
@@ -1602,6 +1735,23 @@ export default function App({user,supabase}){
           <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:22,letterSpacing:1,color:GC}}>MY PROFILE</div>
         </div>
         <div style={{textAlign:"center",marginBottom:18}}>
+          {(()=>{var li=getLevelInfo(xp);return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:10,marginBottom:10}}>
+            <div style={{background:li.color+"22",border:"1px solid "+li.color+"44",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+              <div style={{fontSize:20}}>{li.em}</div>
+              <div style={{fontSize:11,fontWeight:700,color:li.color}}>Lv.{li.level} {li.title}</div>
+              <div style={{fontSize:9,color:"#555"}}>{xp.toLocaleString()} XP</div>
+            </div>
+            {streak>0&&<div style={{background:"#ff6b3522",border:"1px solid #ff6b3544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+              <div style={{fontSize:20}}>🔥</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#ff6b35"}}>{streak}</div>
+              <div style={{fontSize:9,color:"#555"}}>day streak</div>
+            </div>}
+            {streakFreezes>0&&<div style={{background:"#3eb8f522",border:"1px solid #3eb8f544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+              <div style={{fontSize:20}}>🧊</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#3eb8f5"}}>{streakFreezes}</div>
+              <div style={{fontSize:9,color:"#555"}}>freezes</div>
+            </div>}
+          </div>);}())}
           <div style={{fontSize:52,marginBottom:8}}>{AVATARS[profile.avatar]}</div>
           <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>
             {AVATARS.map(function(a,i){return <button key={i} onClick={()=>setProfile(Object.assign({},profile,{avatar:i}))} style={{fontSize:20,background:profile.avatar===i?"#1e1e2a":"transparent",border:"1px solid "+(profile.avatar===i?GC:"#2a2a3a"),borderRadius:9,padding:"5px 9px",cursor:"pointer"}}>{a}</button>;})}
@@ -1754,7 +1904,39 @@ export default function App({user,supabase}){
       <div style={{padding:"14px",paddingBottom:80}}>
 
         {tab==="dashboard"&&(<div style={{display:"flex",flexDirection:"column",gap:11}}>
-          {profile.name&&(<div style={{display:"flex",alignItems:"center",gap:9,background:"#13131a",border:"1px solid "+GC+"22",borderRadius:13,padding:"9px 13px"}}><span style={{fontSize:24}}>{AVATARS[profile.avatar]}</span><div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{profile.name}</div>{profile.bio&&<div style={{fontSize:10,color:"#555"}}>{profile.bio}</div>}</div><div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#555"}}>{goalObj.em} {goalObj.label}</div>{sugCal>0&&calGoal!==sugCal&&<button onClick={applyS} style={{background:"none",border:"none",color:GC,fontSize:9,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Use {sugCal}?</button>}</div></div>)}
+          {/* XP popup animation */}
+          {xpAnim&&(<div style={{position:"fixed",top:"20%",left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#13131a",border:"2px solid "+GC,borderRadius:14,padding:"10px 20px",textAlign:"center",animation:"up .3s ease",pointerEvents:"none"}}>
+            <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:28,color:GC,lineHeight:1}}>+{xpAnim.amount} XP</div>
+            <div style={{fontSize:11,color:"#888",marginTop:2}}>{xpAnim.reason}</div>
+          </div>)}
+          {profile.name&&(()=>{
+            var li=getLevelInfo(xp);
+            var prog=getXPProgress(xp);
+            return(<div style={{background:"#13131a",border:"1px solid "+GC+"22",borderRadius:13,padding:"9px 13px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:8}}>
+                <span style={{fontSize:24}}>{AVATARS[profile.avatar]}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14}}>{profile.name}</div>
+                  {profile.bio&&<div style={{fontSize:10,color:"#555"}}>{profile.bio}</div>}
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,justifyContent:"flex-end"}}>
+                    <span style={{fontSize:16}}>{li.em}</span>
+                    <div style={{background:li.color+"22",border:"1px solid "+li.color+"44",borderRadius:7,padding:"2px 8px"}}>
+                      <span style={{fontSize:9,fontWeight:700,color:li.color}}>Lv.{li.level} {li.title}</span>
+                    </div>
+                  </div>
+                  {streak>0&&<div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end",marginTop:3}}><span style={{fontSize:11}}>🔥</span><span style={{fontSize:10,fontWeight:700,color:"#ff6b35"}}>{streak} day streak</span></div>}
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <div style={{flex:1,background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}>
+                  <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+li.color+"88,"+li.color+")",width:prog+"%",transition:"width .6s ease"}}/>
+                </div>
+                <span style={{fontSize:9,color:"#555",flexShrink:0}}>{xp.toLocaleString()} XP</span>
+              </div>
+            </div>);
+          })()}
           <div className="card" style={{display:"flex",alignItems:"center",gap:13}}>
             <div style={{position:"relative",flexShrink:0}}>
               <svg width="100" height="100" style={{transform:"rotate(-90deg)"}}>
@@ -1940,15 +2122,19 @@ export default function App({user,supabase}){
             {!socialLoaded&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>Loading...</div>}
             {socialLoaded&&suggested.length===0&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>No new people to discover right now. Check back later!</div>}
             {suggested.map(function(u){return(
-              <div key={u.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"13px",marginBottom:9}}>
+               <div key={u.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"13px",marginBottom:9}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{fontSize:32,background:"#0a0a0f",borderRadius:"50%",width:48,height:48,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{AVATARS[u.avatar_index||0]}</div>
+                  <div style={{fontSize:28,background:"#0a0a0f",borderRadius:"50%",width:48,height:48,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative"}}>
+                    {AVATARS[u.avatar_index||0]}
+                    <div style={{position:"absolute",bottom:-4,right:-4,background:getLevelInfo(u.xp||0).color,borderRadius:99,padding:"1px 5px",fontSize:8,fontWeight:700,color:"#0a0a0f",border:"1px solid #0a0a0f"}}>{getLevelInfo(u.xp||0).em}{getLevelInfo(u.xp||0).level}</div>
+                  </div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:700,fontSize:14}}>{u.display_name||u.username||"User"}</div>
                     {u.bio&&<div style={{fontSize:11,color:"#666",marginTop:1}}>{u.bio}</div>}
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4,flexWrap:"wrap"}}>
                       <span style={{fontSize:9,background:getGoalColor(u.goal)+"22",color:getGoalColor(u.goal),borderRadius:99,padding:"2px 7px",fontWeight:700}}>{getGoalLabel(u.goal)}</span>
-                      {u.workout_count>0&&<span style={{fontSize:9,color:"#555"}}>{u.workout_count} workouts</span>}
+                      <span style={{fontSize:9,background:getLevelInfo(u.xp||0).color+"22",color:getLevelInfo(u.xp||0).color,borderRadius:99,padding:"2px 7px",fontWeight:700}}>{getLevelInfo(u.xp||0).title}</span>
+                      {(u.streak||0)>0&&<span style={{fontSize:9,color:"#ff6b35"}}>🔥{u.streak}</span>}
                     </div>
                   </div>
                   <button onClick={()=>sendMatchReq(u.id)} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>Connect</button>
