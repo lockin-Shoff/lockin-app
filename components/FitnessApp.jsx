@@ -1192,13 +1192,19 @@ export default function App({user,supabase}){
 
   async function sendMatchReq(toUserId){
     var sb=supabase||sbClient;
+    if(!user){console.log("No user");return;}
     try{
-      await sb.from("profiles").upsert({id:user.id},{onConflict:"id"});
+      // Optimistically remove from suggestions immediately
+      setSuggested(function(prev){return prev.filter(function(s){return s.id!==toUserId;});});
       var{error}=await sb.from("match_requests").insert({from_user_id:user.id,to_user_id:toUserId,status:"pending"});
-      if(error){console.log("Match req error:",error.message);return;}
-      setSuggested(suggested.filter(function(s){return s.id!==toUserId;}));
+      if(error){
+        console.log("Match req error:",error.message,error.code);
+        // Re-add to suggestions if failed
+        loadSocial();
+        return;
+      }
       loadSocial();
-    }catch(e){console.log("Match req exception:",e);}
+    }catch(e){console.log("Match req exception:",e);loadSocial();}
   }
 
   async function respondMatch(matchId,accept){
