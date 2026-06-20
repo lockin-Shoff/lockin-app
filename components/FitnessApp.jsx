@@ -1530,7 +1530,6 @@ export default function App({user,supabase}){
           </div>)}
         </div>
       </div>
-      {/* Bottom back button */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0a0a0f",borderTop:"1px solid #1a1a22",padding:"12px 14px"}}>
         <button onClick={()=>setScreen("main")} style={{width:"100%",background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:11,padding:"12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:14}}>Back</button>
       </div>
