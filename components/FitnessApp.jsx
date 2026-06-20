@@ -1007,6 +1007,28 @@ function getXPProgress(xp){
   return Math.round((prog/range)*100);
 }
 
+
+function ProfileLevelCard({xp,streak,streakFreezes}){
+  var li=getLevelInfo(xp);
+  return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:10,marginBottom:10}}>
+    <div style={{background:li.color+"22",border:"1px solid "+li.color+"44",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+      <div style={{fontSize:20}}>{li.em}</div>
+      <div style={{fontSize:11,fontWeight:700,color:li.color}}>Lv.{li.level} {li.title}</div>
+      <div style={{fontSize:9,color:"#555"}}>{xp.toLocaleString()} XP</div>
+    </div>
+    {streak>0&&<div style={{background:"#ff6b3522",border:"1px solid #ff6b3544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+      <div style={{fontSize:20}}>🔥</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#ff6b35"}}>{streak}</div>
+      <div style={{fontSize:9,color:"#555"}}>day streak</div>
+    </div>}
+    {streakFreezes>0&&<div style={{background:"#3eb8f522",border:"1px solid #3eb8f544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
+      <div style={{fontSize:20}}>🧊</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#3eb8f5"}}>{streakFreezes}</div>
+      <div style={{fontSize:9,color:"#555"}}>freezes</div>
+    </div>}
+  </div>);
+}
+
 export default function App({user,supabase}){
   var[screen,setScreen]=useState("main");
   var[tab,setTab]=useState("dashboard");
@@ -1735,23 +1757,7 @@ export default function App({user,supabase}){
           <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:22,letterSpacing:1,color:GC}}>MY PROFILE</div>
         </div>
         <div style={{textAlign:"center",marginBottom:18}}>
-          {(()=>{var li=getLevelInfo(xp);return(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:10,marginBottom:10}}>
-            <div style={{background:li.color+"22",border:"1px solid "+li.color+"44",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
-              <div style={{fontSize:20}}>{li.em}</div>
-              <div style={{fontSize:11,fontWeight:700,color:li.color}}>Lv.{li.level} {li.title}</div>
-              <div style={{fontSize:9,color:"#555"}}>{xp.toLocaleString()} XP</div>
-            </div>
-            {streak>0&&<div style={{background:"#ff6b3522",border:"1px solid #ff6b3544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
-              <div style={{fontSize:20}}>🔥</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#ff6b35"}}>{streak}</div>
-              <div style={{fontSize:9,color:"#555"}}>day streak</div>
-            </div>}
-            {streakFreezes>0&&<div style={{background:"#3eb8f522",border:"1px solid #3eb8f544",borderRadius:10,padding:"6px 14px",textAlign:"center"}}>
-              <div style={{fontSize:20}}>🧊</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#3eb8f5"}}>{streakFreezes}</div>
-              <div style={{fontSize:9,color:"#555"}}>freezes</div>
-            </div>}
-          </div>);}())}
+          <ProfileLevelCard xp={xp} streak={streak} streakFreezes={streakFreezes}/>
           <div style={{fontSize:52,marginBottom:8}}>{AVATARS[profile.avatar]}</div>
           <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>
             {AVATARS.map(function(a,i){return <button key={i} onClick={()=>setProfile(Object.assign({},profile,{avatar:i}))} style={{fontSize:20,background:profile.avatar===i?"#1e1e2a":"transparent",border:"1px solid "+(profile.avatar===i?GC:"#2a2a3a"),borderRadius:9,padding:"5px 9px",cursor:"pointer"}}>{a}</button>;})}
