@@ -1179,14 +1179,16 @@ export default function App({user,supabase}){
 
   async function addW(){
     if(!selEx)return;var c=Math.round(selEx.caloriesPerMin*exDur);
-    setWorkouts(workouts.concat([{id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));
+    var nowIso=new Date().toISOString();
+    setWorkouts(workouts.concat([{id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,logged_at:nowIso,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),sets:[]}]));
     closeEx();
     if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c});}catch(e){}
   }
 
   async function addCW(){
     if(!custEx.name)return;
-    setWorkouts(workouts.concat([{id:Date.now(),name:custEx.name,em:EM.medal,dur:+custEx.dur,cal:+custEx.cal,cat:"Custom",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));
+    var nowIso2=new Date().toISOString();
+    setWorkouts(workouts.concat([{id:Date.now(),name:custEx.name,em:EM.medal,dur:+custEx.dur,cal:+custEx.cal,cat:"Custom",logged_at:nowIso2,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),sets:[]}]));
     closeEx();
     if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:custEx.name,category:"Custom",duration:+custEx.dur,calories:+custEx.cal});}catch(e){}
   }
@@ -1239,14 +1241,16 @@ export default function App({user,supabase}){
   function closeFood(){setShowFood(false);setFoodTab("browse");setSelFood(null);setFoodSrv(1);setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);setBarInput("");setBarSrv(1);}
 
   async function addMeal(food,srv){
-    var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+    var nowIso3=new Date().toISOString();
+    var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",logged_at:nowIso3,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
     setMeals(meals.concat([newM]));closeFood();
     if(user&&supabase)try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving"});}catch(e){}
   }
 
   async function addCM(){
     if(!custFood.name)return;
-    setMeals(meals.concat([{id:Date.now(),name:custFood.name,em:EM.plate,cal:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per:"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeFood();
+    var nowIso4=new Date().toISOString();
+    setMeals(meals.concat([{id:Date.now(),name:custFood.name,em:EM.plate,cal:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per:"serving",logged_at:nowIso4,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeFood();
     if(user&&supabase)try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:custFood.name,calories:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per_unit:"serving"});}catch(e){}
   }
 
@@ -1333,10 +1337,7 @@ export default function App({user,supabase}){
       <div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e8e4dc",fontFamily:"DM Sans,sans-serif",maxWidth:480,margin:"0 auto"}}>
         <style>{css}</style>
         <div style={{position:"sticky",top:0,background:"#0a0a0f",borderBottom:"1px solid #1a1a22",padding:"12px 14px",zIndex:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-            <button onClick={()=>setScreen("main")} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:9,padding:"7px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Back</button>
-            <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:22,letterSpacing:1,color:GC}}>HISTORY</div>
-          </div>
+          <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:22,letterSpacing:1,color:GC,marginBottom:10}}>HISTORY</div>
           {/* Range selector */}
           <div style={{display:"flex",gap:4}}>
             {ranges.map(function(r){return(
@@ -1345,7 +1346,7 @@ export default function App({user,supabase}){
           </div>
         </div>
 
-        <div style={{padding:"14px",paddingBottom:80}}>
+        <div style={{padding:"14px",paddingBottom:100}}>
           {/* Tab selector */}
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3,marginBottom:14,border:"1px solid #1a1a22"}}>
             {[["calories","Calories"],["workouts","Workouts"],["nutrition","Nutrition"]].map(function(x){return(
@@ -1528,6 +1529,10 @@ export default function App({user,supabase}){
             })}
           </div>)}
         </div>
+      </div>
+      {/* Bottom back button */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0a0a0f",borderTop:"1px solid #1a1a22",padding:"12px 14px"}}>
+        <button onClick={()=>setScreen("main")} style={{width:"100%",background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:11,padding:"12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:14}}>Back</button>
       </div>
     );
   }
