@@ -999,6 +999,7 @@ export default function App({user,supabase}){
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
     async function loadAll(){
+      var sb=supabase||sbClient;
       // Load from localStorage cache first for instant display
       try{
         var cached=localStorage.getItem("lockin_profile_"+user.id);
@@ -1013,7 +1014,7 @@ export default function App({user,supabase}){
       // Then load from Supabase and update
       var p=null;
       for(var attempt=0;attempt<3;attempt++){
-        var{data:pd}=await supabase.from("profiles").select("*").eq("id",user.id).single();
+        var{data:pd}=await sb.from("profiles").select("*").eq("id",user.id).single();
         if(pd){p=pd;break;}
         if(attempt<2)await new Promise(function(r){setTimeout(r,600);});
       }
@@ -1039,11 +1040,11 @@ export default function App({user,supabase}){
       var today=new Date().toISOString().split("T")[0];
       // Load workouts for last 365 days with sets for progress tracking
       var d365=new Date();d365.setDate(d365.getDate()-365);
-      var{data:ws}=await (supabase||sbClient).from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",d365.toISOString().split("T")[0]).order("logged_at",{ascending:false}).limit(200);
+      var{data:ws}=await sb.from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",d365.toISOString().split("T")[0]).order("logged_at",{ascending:false}).limit(200);
       if(ws&&ws.length)setWorkouts(ws.map(function(w){return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",logged_at:w.logged_at,time:new Date(w.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:new Date(w.logged_at).toLocaleDateString([],{month:"short",day:"numeric"}),sets:w.workout_sets||[],moves:[]};}));
       // Meals load last 60 days
       var d60=new Date();d60.setDate(d60.getDate()-60);
-      var{data:ms}=await (supabase||sbClient).from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString().split("T")[0]).order("logged_at",{ascending:false});
+      var{data:ms}=await sb.from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString().split("T")[0]).order("logged_at",{ascending:false});
       if(ms&&ms.length)setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};}));
       setDbLoaded(true);
     }
@@ -1175,14 +1176,14 @@ export default function App({user,supabase}){
     if(!selEx)return;var c=Math.round(selEx.caloriesPerMin*exDur);
     setWorkouts(workouts.concat([{id:Date.now(),name:selEx.name,em:selEx.em,dur:exDur,cal:c,cat:selEx.category,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));
     closeEx();
-    if(user&&supabase)try{await supabase.from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c});}catch(e){}
+    if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:selEx.name,category:selEx.category,duration:exDur,calories:c});}catch(e){}
   }
 
   async function addCW(){
     if(!custEx.name)return;
     setWorkouts(workouts.concat([{id:Date.now(),name:custEx.name,em:EM.medal,dur:+custEx.dur,cal:+custEx.cal,cat:"Custom",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));
     closeEx();
-    if(user&&supabase)try{await supabase.from("workouts").insert({user_id:user.id,name:custEx.name,category:"Custom",duration:+custEx.dur,calories:+custEx.cal});}catch(e){}
+    if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:custEx.name,category:"Custom",duration:+custEx.dur,calories:+custEx.cal});}catch(e){}
   }
 
   function addMove(){if(!curMove.trim())return;var nm=moves.concat([{name:curMove.trim(),sets:[]}]);setMoves(nm);setCurMove("");setActiveIdx(nm.length-1);}
@@ -1205,8 +1206,8 @@ export default function App({user,supabase}){
     setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
     if(user&&supabase){
       try{
-        var{data:wd}=await supabase.from("workouts").insert({user_id:user.id,name:recName||"Recorded Workout",category:"Strength",duration:Math.max(1,Math.round(timer.elapsed/60)),calories:c}).select().single();
-        if(wd){var setRows=[];moves.forEach(function(mv){mv.sets.forEach(function(s,i){setRows.push({workout_id:wd.id,exercise:mv.name,set_number:i+1,reps:s.reps,weight:s.weight,note:s.note,done:s.done});});});if(setRows.length)await supabase.from("workout_sets").insert(setRows);}
+        var{data:wd}=await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:recName||"Recorded Workout",category:"Strength",duration:Math.max(1,Math.round(timer.elapsed/60)),calories:c}).select().single();
+        if(wd){var setRows=[];moves.forEach(function(mv){mv.sets.forEach(function(s,i){setRows.push({workout_id:wd.id,exercise:mv.name,set_number:i+1,reps:s.reps,weight:s.weight,note:s.note,done:s.done});});});if(setRows.length)await (supabase||sbClient).from("workout_sets").insert(setRows);}
       }catch(e){}
     }
   }
@@ -1235,18 +1236,18 @@ export default function App({user,supabase}){
   async function addMeal(food,srv){
     var newM={id:Date.now(),name:food.name,em:food.em||EM.plate,cal:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per:food.per||"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
     setMeals(meals.concat([newM]));closeFood();
-    if(user&&supabase)try{await supabase.from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving"});}catch(e){}
+    if(user&&supabase)try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving"});}catch(e){}
   }
 
   async function addCM(){
     if(!custFood.name)return;
     setMeals(meals.concat([{id:Date.now(),name:custFood.name,em:EM.plate,cal:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per:"serving",time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}]));closeFood();
-    if(user&&supabase)try{await supabase.from("meals").insert({user_id:user.id,name:custFood.name,calories:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per_unit:"serving"});}catch(e){}
+    if(user&&supabase)try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:custFood.name,calories:+custFood.cal,protein:+custFood.p,carbs:+custFood.c,fat:+custFood.f,servings:1,per_unit:"serving"});}catch(e){}
   }
 
   function addSM(food){addMeal(Object.assign({},food,{calories:food.calories,per:"serving"}),1);setShowSugs(false);}
-  async function removeWorkout(id){setWorkouts(workouts.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await supabase.from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
-  async function removeMeal(id){setMeals(meals.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await supabase.from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeWorkout(id){setWorkouts(workouts.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeMeal(id){setMeals(meals.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
 
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
