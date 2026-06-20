@@ -834,6 +834,106 @@ function useTimer(){
   function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
   return{elapsed:e,running:run,setRunning:sR,reset:function(){sE(0);sR(false);},fmt};
 }
+
+function ProgressChart({workouts,exerciseName,GC}){
+  if(!exerciseName)return null;
+  // Extract max weight per session for this exercise
+  var points=[];
+  workouts.slice().reverse().forEach(function(w){
+    if(!w.sets||!w.sets.length)return;
+    var exSets=w.sets.filter(function(s){return s.exercise&&s.exercise.toLowerCase()===exerciseName.toLowerCase()&&s.weight&&parseFloat(s.weight)>0;});
+    if(!exSets.length)return;
+    var maxW=Math.max.apply(null,exSets.map(function(s){return parseFloat(s.weight)||0;}));
+    var maxR=Math.max.apply(null,exSets.map(function(s){return parseFloat(s.reps)||0;}));
+    if(maxW>0)points.push({date:w.date||w.time,weight:maxW,reps:maxR,logged_at:w.logged_at});
+  });
+  if(!points.length)return(
+    <div style={{textAlign:"center",padding:"20px",color:"#555",fontSize:12}}>No weight data logged for {exerciseName} yet. Record a workout with weights to see progress.</div>
+  );
+  var maxW=Math.max.apply(null,points.map(function(p){return p.weight;}));
+  var minW=Math.min.apply(null,points.map(function(p){return p.weight;}));
+  var chartH=120,chartW=300,pad=30;
+  var pr=points[points.length-1];
+  var first=points[0];
+  var diff=pr.weight-first.weight;
+  return(
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:12}}>
+        {[["Best",maxW+"lbs",GC],["Sessions",points.length,"#3eb8f5"],["Progress",(diff>=0?"+":"")+diff+"lbs",diff>=0?"#c8f53e":"#ff6b35"]].map(function(x){return(
+          <div key={x[0]} style={{background:"#0a0a0f",borderRadius:9,padding:"8px",textAlign:"center"}}>
+            <div style={{fontSize:8,color:"#555",marginBottom:3}}>{x[0]}</div>
+            <div style={{fontSize:14,fontWeight:700,color:x[2]}}>{x[1]}</div>
+          </div>
+        );})}
+      </div>
+      <svg width="100%" viewBox={"0 0 "+(chartW+pad*2)+" "+(chartH+pad*2)} style={{overflow:"visible"}}>
+        <defs>
+          <linearGradient id="chartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={GC} stopOpacity="0.3"/>
+            <stop offset="100%" stopColor={GC} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        {[0,0.25,0.5,0.75,1].map(function(t){
+          var y=pad+chartH*t;
+          var val=Math.round(maxW-(maxW-minW)*t);
+          return(<g key={t}>
+            <line x1={pad} y1={y} x2={pad+chartW} y2={y} stroke="#1e1e2a" strokeWidth="1"/>
+            <text x={pad-4} y={y+4} textAnchor="end" fill="#444" fontSize="9">{val}</text>
+          </g>);
+        })}
+        {/* Area fill */}
+        {points.length>1&&(()=>{
+          var pts=points.map(function(p,i){
+            var x=pad+(i/(points.length-1))*chartW;
+            var y=pad+chartH-(((p.weight-minW)/(maxW-minW||1))*chartH);
+            return x+","+y;
+          });
+          var area=pts.join(" ")+" "+(pad+chartW)+","+(pad+chartH)+" "+pad+","+(pad+chartH);
+          return <polygon points={area} fill="url(#chartGrad)"/>;
+        })()}
+        {/* Line */}
+        {points.length>1&&(()=>{
+          var d=points.map(function(p,i){
+            var x=pad+(i/(points.length-1))*chartW;
+            var y=pad+chartH-(((p.weight-minW)/(maxW-minW||1))*chartH);
+            return(i===0?"M":"L")+x+","+y;
+          }).join(" ");
+          return <path d={d} fill="none" stroke={GC} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>;
+        })()}
+        {/* Dots + labels */}
+        {points.map(function(p,i){
+          var x=pad+(i/(points.length-1||1))*chartW;
+          var y=pad+chartH-(((p.weight-minW)/(maxW-minW||1))*chartH);
+          var isLast=i===points.length-1;
+          return(<g key={i}>
+            <circle cx={x} cy={y} r={isLast?5:3} fill={isLast?GC:"#0a0a0f"} stroke={GC} strokeWidth="2"/>
+            {isLast&&<text x={x} y={y-10} textAnchor="middle" fill={GC} fontSize="10" fontWeight="700">{p.weight}lbs</text>}
+          </g>);
+        })}
+        {/* X axis dates */}
+        {points.filter(function(_,i){return i===0||i===points.length-1||i===Math.floor(points.length/2);}).map(function(p,i,arr){
+          var origIdx=i===0?0:i===arr.length-1?points.length-1:Math.floor(points.length/2);
+          var x=pad+(origIdx/(points.length-1||1))*chartW;
+          return <text key={i} x={x} y={pad+chartH+16} textAnchor="middle" fill="#444" fontSize="8">{p.date}</text>;
+        })}
+      </svg>
+      <div style={{marginTop:8}}>
+        <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:6}}>RECENT SESSIONS</div>
+        {points.slice(-5).reverse().map(function(p,i){return(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1a1a22"}}>
+            <div style={{fontSize:11,color:"#888"}}>{p.date}</div>
+            <div style={{display:"flex",gap:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:GC}}>{p.weight} lbs</div>
+              <div style={{fontSize:11,color:"#555"}}>{p.reps} reps</div>
+            </div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+}
+
 export default function App({user,supabase}){
   var[screen,setScreen]=useState("main");
   var[tab,setTab]=useState("dashboard");
@@ -883,6 +983,8 @@ export default function App({user,supabase}){
   var[socialLoaded,setSocialLoaded]=useState(false);
   var msgEndRef=useRef(null);
   var barRef=useRef(null);
+  var[showProgress,setShowProgress]=useState(false);
+  var[progressEx,setProgressEx]=useState("");
 
   var wKg=profile.wLbs?+profile.wLbs*0.453592:0;
   var hCm=(+profile.hFt*30.48)+(+profile.hIn*2.54);
@@ -935,9 +1037,13 @@ export default function App({user,supabase}){
         }catch(e){}
       }
       var today=new Date().toISOString().split("T")[0];
-      var{data:ws}=await supabase.from("workouts").select("*").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
-      if(ws&&ws.length)setWorkouts(ws.map(function(w){return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",time:new Date(w.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:[]};}));
-      var{data:ms}=await supabase.from("meals").select("*").eq("user_id",user.id).gte("logged_at",today).order("logged_at",{ascending:false});
+      // Load workouts for last 365 days with sets for progress tracking
+      var d365=new Date();d365.setDate(d365.getDate()-365);
+      var{data:ws}=await (supabase||sbClient).from("workouts").select("*, workout_sets(*)").eq("user_id",user.id).gte("logged_at",d365.toISOString().split("T")[0]).order("logged_at",{ascending:false}).limit(200);
+      if(ws&&ws.length)setWorkouts(ws.map(function(w){return{id:w.id,name:w.name,em:EM.lift,dur:w.duration,cal:w.calories,cat:w.category||"Strength",logged_at:w.logged_at,time:new Date(w.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:new Date(w.logged_at).toLocaleDateString([],{month:"short",day:"numeric"}),sets:w.workout_sets||[],moves:[]};}));
+      // Meals load last 60 days
+      var d60=new Date();d60.setDate(d60.getDate()-60);
+      var{data:ms}=await (supabase||sbClient).from("meals").select("*").eq("user_id",user.id).gte("logged_at",d60.toISOString().split("T")[0]).order("logged_at",{ascending:false});
       if(ms&&ms.length)setMeals(ms.map(function(m){return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",time:new Date(m.logged_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};}));
       setDbLoaded(true);
     }
@@ -951,18 +1057,19 @@ export default function App({user,supabase}){
   },[user,dbLoaded]);
 
   async function loadSocial(){
+    var sb=supabase||sbClient;
     try{
-      var{data:sugg}=await supabase.rpc("get_suggested_matches",{limit_count:30});
+      var{data:sugg}=await sb.rpc("get_suggested_matches",{limit_count:30});
       setSuggested(sugg||[]);
-      var{data:acc}=await supabase.from("match_requests")
+      var{data:acc}=await sb.from("match_requests")
         .select("*, from_user:profiles!match_requests_from_user_id_fkey(id,display_name,username,avatar_index,goal,bio), to_user:profiles!match_requests_to_user_id_fkey(id,display_name,username,avatar_index,goal,bio)")
         .or("from_user_id.eq."+user.id+",to_user_id.eq."+user.id).eq("status","accepted");
       setMatches((acc||[]).map(function(m){return Object.assign({},m,{partner:m.from_user_id===user.id?m.to_user:m.from_user});}));
-      var{data:pin}=await supabase.from("match_requests")
+      var{data:pin}=await sb.from("match_requests")
         .select("*, from_user:profiles!match_requests_from_user_id_fkey(id,display_name,username,avatar_index,goal,bio)")
         .eq("to_user_id",user.id).eq("status","pending");
       setPendingIn(pin||[]);
-      var{data:pout}=await supabase.from("match_requests")
+      var{data:pout}=await sb.from("match_requests")
         .select("*, to_user:profiles!match_requests_to_user_id_fkey(id,display_name,username,avatar_index,goal,bio)")
         .eq("from_user_id",user.id).eq("status","pending");
       setPendingOut(pout||[]);
@@ -971,10 +1078,10 @@ export default function App({user,supabase}){
   }
 
   async function sendMatchReq(toUserId){
+    var sb=supabase||sbClient;
     try{
-      // Ensure our own profile row exists first
-      await supabase.from("profiles").upsert({id:user.id},{onConflict:"id"});
-      var{error}=await supabase.from("match_requests").insert({from_user_id:user.id,to_user_id:toUserId,status:"pending"});
+      await sb.from("profiles").upsert({id:user.id},{onConflict:"id"});
+      var{error}=await sb.from("match_requests").insert({from_user_id:user.id,to_user_id:toUserId,status:"pending"});
       if(error){console.log("Match req error:",error.message);return;}
       setSuggested(suggested.filter(function(s){return s.id!==toUserId;}));
       loadSocial();
@@ -982,14 +1089,16 @@ export default function App({user,supabase}){
   }
 
   async function respondMatch(matchId,accept){
-    try{await supabase.from("match_requests").update({status:accept?"accepted":"declined"}).eq("id",matchId);loadSocial();}catch(e){}
+    var sb=supabase||sbClient;
+    try{await sb.from("match_requests").update({status:accept?"accepted":"declined"}).eq("id",matchId);loadSocial();}catch(e){}
   }
 
   async function openChat(match){
+    var sb=supabase||sbClient;
     setActiveChat(match);
-    var{data:msgs}=await supabase.from("messages").select("*").eq("match_id",match.id).order("created_at",{ascending:true});
+    var{data:msgs}=await sb.from("messages").select("*").eq("match_id",match.id).order("created_at",{ascending:true});
     setChatMessages(msgs||[]);
-    supabase.channel("chat:"+match.id)
+    sb.channel("chat:"+match.id)
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"match_id=eq."+match.id},
         function(payload){setChatMessages(function(prev){return prev.concat([payload.new]);});})
       .subscribe();
@@ -997,9 +1106,10 @@ export default function App({user,supabase}){
   }
 
   async function sendMsg(){
+    var sb=supabase||sbClient;
     if(!msgInput.trim()||!activeChat)return;
     var txt=msgInput.trim();setMsgInput("");
-    try{await supabase.from("messages").insert({match_id:activeChat.id,sender_id:user.id,content:txt});}catch(e){}
+    try{await sb.from("messages").insert({match_id:activeChat.id,sender_id:user.id,content:txt});}catch(e){}
   }
 
   function getGoalColor(g){return g==="bulk"?"#c8f53e":g==="shred"?"#ff6b35":g==="endurance"?"#b03ef5":"#3eb8f5";}
@@ -1446,6 +1556,26 @@ export default function App({user,supabase}){
             );})}
           </div>)}
           {workouts.length===0&&!wSug&&<div style={{textAlign:"center",padding:"26px 0",color:"#333",fontSize:12}}>No workouts logged yet</div>}
+
+          {/* Exercise Progress Tracker */}
+          {workouts.length>0&&(<div className="card" style={{padding:13,marginBottom:4}}>
+            <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:9}}>EXERCISE PROGRESS</div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <input className="inp" placeholder="Search exercise (e.g. Bench Press)" value={progressEx} onChange={e=>setProgressEx(e.target.value)} style={{flex:1,fontSize:13}}/>
+              <button onClick={()=>setShowProgress(!showProgress)} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>{showProgress?"Hide":"Track"}</button>
+            </div>
+            {/* Quick exercise chips from logged workouts */}
+            {(()=>{
+              var exNames={};
+              workouts.forEach(function(w){(w.sets||[]).forEach(function(s){if(s.exercise)exNames[s.exercise]=true;});});
+              var names=Object.keys(exNames).slice(0,8);
+              if(!names.length)return null;
+              return(<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
+                {names.map(function(n){return <button key={n} onClick={()=>{setProgressEx(n);setShowProgress(true);}} style={{background:progressEx===n?"#1a2a12":"#0a0a0f",border:"1px solid "+(progressEx===n?GC:"#2a2a3a"),color:progressEx===n?GC:"#666",borderRadius:99,padding:"3px 9px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>{n}</button>;})}</div>);
+            })()}
+            {showProgress&&progressEx&&(<ProgressChart workouts={workouts} exerciseName={progressEx} GC={GC}/>)}
+          </div>)}
+
           {workouts.map(function(w){return(
             <div key={w.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"11px 13px"}}>
               <div style={{display:"flex",alignItems:"center",gap:9}}>
