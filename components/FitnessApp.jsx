@@ -1083,6 +1083,7 @@ export default function App({user,supabase}){
   var[historyTab,setHistoryTab]=useState("calories");
   var[historyRange,setHistoryRange]=useState(30);
   var[xp,setXp]=useState(0);
+  var[darkMode,setDarkMode]=useState(true);
   var[streak,setStreak]=useState(0);
   var[streakFreezes,setStreakFreezes]=useState(0);
   var[xpAnim,setXpAnim]=useState(null);
@@ -1099,6 +1100,8 @@ export default function App({user,supabase}){
   // Load from Supabase on mount
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
+    // Load dark mode preference
+    try{var dm=localStorage.getItem("lockin_darkmode");if(dm!==null)setDarkMode(dm!=="false");}catch(e){}
     async function loadAll(){
       var sb=supabase||sbClient;
       // Load from localStorage cache first for instant display
@@ -1438,7 +1441,6 @@ export default function App({user,supabase}){
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
   var css="@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Bebas+Neue&display=swap');"
-    +"@media(prefers-color-scheme:light){body,#__next,#__next>div{background:#f2f2f5!important;color:#111!important}}.card,.modal,.exc,.sug,.inp{background:#fff!important;border-color:#dde!important;color:#111!important}input{color:#111!important}input::placeholder{color:#999!important}.chip{background:#f0f0f8!important;border-color:#ccd!important;color:#666!important}.del{color:#ccc!important}"
     +"*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:0}"
     +"input{outline:none;background:transparent;border:none;color:#e8e4dc;font-family:inherit}input::placeholder{color:#3a3a4a}"
     +"input[type=range]{width:100%;accent-color:"+GC+"}"
@@ -1458,6 +1460,7 @@ export default function App({user,supabase}){
     +".chip.on{border-color:"+GC+";color:"+GC+";background:#151e12}"
     +".sug{background:#0a0a0f;border:1px solid #1e1e2a;border-radius:11px;padding:10px;margin-bottom:7px}"
     +"@keyframes spin{to{transform:rotate(360deg)}}"
+    +(darkMode?"":"@media all{body,#__next>div{background:#f4f4f8!important;color:#111118!important}.card{background:#ffffff!important;border-color:#e0e0ee!important}.modal{background:#ffffff!important;border-color:#e0e0ee!important}.inp{background:#f0f0f8!important;border-color:#d0d0e0!important;color:#111118!important}.chip{background:#f0f0f8!important;border-color:#d0d0e0!important;color:#666!important}.exc{background:#ffffff!important;border-color:#e0e0ee!important}.sug{background:#f8f8ff!important;border-color:#e0e0ee!important}}")
     +"@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}";
 
   var base={minHeight:"100vh",background:"#0a0a0f",color:"#e8e4dc",fontFamily:"DM Sans,sans-serif",maxWidth:480,margin:"0 auto"};
@@ -1771,6 +1774,31 @@ export default function App({user,supabase}){
           </div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:9}}>
+          {/* Dark / Light mode toggle */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"11px 14px"}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:13}}>{darkMode?"Dark Mode":"Light Mode"}</div>
+              <div style={{fontSize:10,color:"#555",marginTop:1}}>App appearance</div>
+            </div>
+            <button onClick={function(){
+              var next=!darkMode;
+              setDarkMode(next);
+              try{localStorage.setItem("lockin_darkmode",String(next));}catch(e){}
+            }} style={{
+              width:48,height:26,borderRadius:99,border:"none",cursor:"pointer",
+              background:darkMode?"#c8f53e":"#555",
+              position:"relative",transition:"background .2s",flexShrink:0,
+            }}>
+              <div style={{
+                position:"absolute",top:3,
+                left:darkMode?24:3,
+                width:20,height:20,borderRadius:"50%",
+                background:"#0a0a0f",
+                transition:"left .2s",
+                boxShadow:"0 1px 4px rgba(0,0,0,0.4)",
+              }}/>
+            </button>
+          </div>
           <input className="inp" placeholder="Your name" value={profile.name} onChange={e=>setProfile(Object.assign({},profile,{name:e.target.value}))}/>
           <input className="inp" placeholder="Bio" value={profile.bio} onChange={e=>setProfile(Object.assign({},profile,{bio:e.target.value}))}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
