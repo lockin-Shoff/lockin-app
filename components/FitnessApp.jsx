@@ -1441,6 +1441,7 @@ export default function App({user,supabase}){
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
   var css="@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Bebas+Neue&display=swap');"
+    +"html{padding-top:env(safe-area-inset-top,0px)}"
     +"*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:0}"
     +"input{outline:none;background:transparent;border:none;color:#e8e4dc;font-family:inherit}input::placeholder{color:#3a3a4a}"
     +"input[type=range]{width:100%;accent-color:"+GC+"}"
@@ -1460,6 +1461,7 @@ export default function App({user,supabase}){
     +".chip.on{border-color:"+GC+";color:"+GC+";background:#151e12}"
     +".sug{background:#0a0a0f;border:1px solid #1e1e2a;border-radius:11px;padding:10px;margin-bottom:7px}"
     +"@keyframes spin{to{transform:rotate(360deg)}}"
+    +"@supports(padding-top:env(safe-area-inset-top)){.safe-top{padding-top:calc(env(safe-area-inset-top) + 14px)!important}}"
     +(darkMode?"":"@media all{body,#__next>div{background:#f4f4f8!important;color:#111118!important}.card{background:#ffffff!important;border-color:#e0e0ee!important}.modal{background:#ffffff!important;border-color:#e0e0ee!important}.inp{background:#f0f0f8!important;border-color:#d0d0e0!important;color:#111118!important}.chip{background:#f0f0f8!important;border-color:#d0d0e0!important;color:#666!important}.exc{background:#ffffff!important;border-color:#e0e0ee!important}.sug{background:#f8f8ff!important;border-color:#e0e0ee!important}}")
     +"@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}";
 
@@ -1920,7 +1922,7 @@ export default function App({user,supabase}){
 
   return(
     <div style={base}><style>{css}</style>
-      <div style={{padding:"14px 14px 9px",position:"sticky",top:0,background:"#0a0a0f",zIndex:10,borderBottom:"1px solid #1a1a22"}}>
+      <div className="safe-top" style={{padding:"50px 14px 9px",position:"sticky",top:0,background:"#0a0a0f",zIndex:10,borderBottom:"1px solid #1a1a22"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:24,letterSpacing:2,color:GC,lineHeight:1}}>LOCK IN</div><div style={{fontSize:10,color:"#444",marginTop:1}}>{TODAY}</div></div>
           <div style={{display:"flex",gap:7,alignItems:"center"}}>
