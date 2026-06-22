@@ -1084,6 +1084,9 @@ export default function App({user,supabase}){
   var[historyRange,setHistoryRange]=useState(30);
   var[xp,setXp]=useState(0);
   var[darkMode,setDarkMode]=useState(true);
+  var[refCode,setRefCode]=useState("");
+  var[refCopied,setRefCopied]=useState(false);
+  var[refCount,setRefCount]=useState(0);
   var[streak,setStreak]=useState(0);
   var[streakFreezes,setStreakFreezes]=useState(0);
   var[xpAnim,setXpAnim]=useState(null);
@@ -1162,6 +1165,7 @@ export default function App({user,supabase}){
         return{id:m.id,name:m.name,em:EM.plate,cal:m.calories,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per_unit||"serving",logged_at:localDateStr,time:localDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
       }));
       setDbLoaded(true);
+      handleReferralOnSignup();
     }
     loadAll();
   },[user]);
@@ -1191,6 +1195,63 @@ export default function App({user,supabase}){
       setPendingOut(pout||[]);
     }catch(e){console.log("Social load error:",e);}
     setSocialLoaded(true);
+    loadReferralData();
+  }
+
+  // ── Referral System ──────────────────────────────────────
+  async function loadReferralData(){
+    var sb=supabase||sbClient;
+    if(!user)return;
+    // Use username as ref code (clean, memorable)
+    try{
+      var{data:p}=await sb.from("profiles").select("username,display_name,ref_count").eq("id",user.id).single();
+      if(p){
+        var code=p.username||p.display_name||user.id.slice(0,8);
+        setRefCode(code.toLowerCase().replace(/[^a-z0-9]/g,""));
+        setRefCount(p.ref_count||0);
+      }
+    }catch(e){}
+  }
+
+  async function handleReferralOnSignup(){
+    // Check URL for ?ref= param and credit the referrer
+    var sb=supabase||sbClient;
+    try{
+      var params=new URLSearchParams(window.location.search);
+      var ref=params.get("ref");
+      if(!ref||!user)return;
+      // Find the referrer by username
+      var{data:referrer}=await sb.from("profiles").select("id,ref_count,xp").ilike("username",ref).single();
+      if(!referrer||referrer.id===user.id)return;
+      // Give referrer +100 XP and increment count
+      var newXp=(referrer.xp||0)+100;
+      var newCount=(referrer.ref_count||0)+1;
+      await sb.from("profiles").update({xp:newXp,ref_count:newCount}).eq("id",referrer.id);
+      // Give new user +50 XP bonus
+      await sb.from("profiles").update({xp:50,ref_bonus:true}).eq("id",user.id);
+      // Clear ref param from URL
+      window.history.replaceState({},"",window.location.pathname);
+    }catch(e){}
+  }
+
+  function copyRefLink(){
+    var url="https://lockin-app-psi.vercel.app?ref="+refCode;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(url).then(function(){
+        setRefCopied(true);
+        setTimeout(function(){setRefCopied(false);},2500);
+      });
+    }
+  }
+
+  function shareRefLink(){
+    var url="https://lockin-app-psi.vercel.app?ref="+refCode;
+    var text="I've been using Lock In to track my workouts and stay accountable. Join me — "+url;
+    if(navigator.share){
+      navigator.share({title:"Lock In",text:text,url:url});
+    } else {
+      copyRefLink();
+    }
   }
 
   async function sendMatchReq(toUserId){
@@ -1801,6 +1862,33 @@ export default function App({user,supabase}){
               }}/>
             </button>
           </div>
+          {/* Referral Card */}
+          {refCode&&(<div style={{background:"#13131a",border:"1px solid "+GC+"44",borderRadius:13,padding:"13px 14px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <div style={{fontSize:20}}>&#127381;</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13}}>Invite Friends</div>
+                <div style={{fontSize:10,color:"#555"}}>You both get bonus XP when they sign up</div>
+              </div>
+              {refCount>0&&<div style={{background:GC+"22",border:"1px solid "+GC+"44",borderRadius:8,padding:"4px 9px",textAlign:"center"}}>
+                <div style={{fontSize:14,fontWeight:700,color:GC}}>{refCount}</div>
+                <div style={{fontSize:8,color:"#555"}}>invited</div>
+              </div>}
+            </div>
+            <div style={{background:"#0a0a0f",borderRadius:9,padding:"9px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{flex:1,fontSize:11,color:"#888",fontFamily:"monospace",wordBreak:"break-all"}}>
+                lockin-app-psi.vercel.app?ref={refCode}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={copyRefLink} style={{flex:1,background:refCopied?GC+"33":"#1e1e2a",border:"1px solid "+(refCopied?GC:"#2a2a3a"),color:refCopied?GC:"#e8e4dc",borderRadius:9,padding:"9px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,transition:"all .2s"}}>
+                {refCopied?"Copied!":"Copy Link"}
+              </button>
+              <button onClick={shareRefLink} style={{flex:1,background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12}}>
+                Share &#128279;
+              </button>
+            </div>
+          </div>)}
           <input className="inp" placeholder="Your name" value={profile.name} onChange={e=>setProfile(Object.assign({},profile,{name:e.target.value}))}/>
           <input className="inp" placeholder="Bio" value={profile.bio} onChange={e=>setProfile(Object.assign({},profile,{bio:e.target.value}))}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
