@@ -1029,6 +1029,123 @@ function ProfileLevelCard({xp,streak,streakFreezes}){
   </div>);
 }
 
+
+// ── Restaurant Menu Database ─────────────────────────────────
+var RESTAURANT_MENUS = {
+  "Chipotle": [
+    {name:"Chicken Burrito Bowl",cal100:150,protein100:11,carbs100:14,fat100:4,brand:"Chipotle",per:"per 100g"},
+    {name:"Steak Burrito Bowl",cal100:148,protein100:10,carbs100:14,fat100:4,brand:"Chipotle",per:"per 100g"},
+    {name:"Carnitas Burrito Bowl",cal100:153,protein100:10,carbs100:13,fat100:5,brand:"Chipotle",per:"per 100g"},
+    {name:"Chicken Burrito",cal100:218,protein100:12,carbs100:26,fat100:7,brand:"Chipotle",per:"per 100g"},
+    {name:"Chicken Tacos (3)",cal100:149,protein100:10,carbs100:16,fat100:4,brand:"Chipotle",per:"per 100g"},
+    {name:"White Rice",cal100:130,protein100:2,carbs100:28,fat100:1,brand:"Chipotle",per:"per 100g"},
+    {name:"Brown Rice",cal100:130,protein100:3,carbs100:27,fat100:2,brand:"Chipotle",per:"per 100g"},
+    {name:"Black Beans",cal100:120,protein100:6,carbs100:22,fat100:1,brand:"Chipotle",per:"per 100g"},
+    {name:"Pinto Beans",cal100:115,protein100:6,carbs100:21,fat100:1,brand:"Chipotle",per:"per 100g"},
+    {name:"Chicken",cal100:180,protein100:32,carbs100:1,fat100:7,brand:"Chipotle",per:"per 100g"},
+    {name:"Steak",cal100:150,protein100:27,carbs100:1,fat100:5,brand:"Chipotle",per:"per 100g"},
+    {name:"Carnitas",cal100:210,protein100:23,carbs100:0,fat100:13,brand:"Chipotle",per:"per 100g"},
+    {name:"Sofritas (Tofu)",cal100:145,protein100:8,carbs100:11,fat100:8,brand:"Chipotle",per:"per 100g"},
+    {name:"Guacamole",cal100:220,protein100:2,carbs100:9,fat100:20,brand:"Chipotle",per:"per 100g"},
+    {name:"Sour Cream",cal100:120,protein100:2,carbs100:3,fat100:11,brand:"Chipotle",per:"per 100g"},
+    {name:"Cheese",cal100:110,protein100:6,carbs100:1,fat100:9,brand:"Chipotle",per:"per 100g"},
+    {name:"Chips",cal100:540,protein100:7,carbs100:72,fat100:24,brand:"Chipotle",per:"per 100g"},
+  ],
+  "McDonald's": [
+    {name:"Big Mac",cal100:252,protein100:12,carbs100:24,fat100:12,brand:"McDonald's",per:"per 100g"},
+    {name:"McDouble",cal100:248,protein100:14,carbs100:25,fat100:10,brand:"McDonald's",per:"per 100g"},
+    {name:"Quarter Pounder with Cheese",cal100:271,protein100:15,carbs100:22,fat100:13,brand:"McDonald's",per:"per 100g"},
+    {name:"Crispy Chicken Sandwich",cal100:265,protein100:14,carbs100:31,fat100:10,brand:"McDonald's",per:"per 100g"},
+    {name:"McChicken",cal100:244,protein100:12,carbs100:27,fat100:10,brand:"McDonald's",per:"per 100g"},
+    {name:"Filet-O-Fish",cal100:246,protein100:13,carbs100:27,fat100:9,brand:"McDonald's",per:"per 100g"},
+    {name:"French Fries (Medium)",cal100:323,protein100:3,carbs100:44,fat100:15,brand:"McDonald's",per:"per 100g"},
+    {name:"10pc McNuggets",cal100:225,protein100:14,carbs100:14,fat100:13,brand:"McDonald's",per:"per 100g"},
+    {name:"Egg McMuffin",cal100:231,protein100:13,carbs100:25,fat100:9,brand:"McDonald's",per:"per 100g"},
+    {name:"Sausage Burrito",cal100:218,protein100:9,carbs100:22,fat100:11,brand:"McDonald's",per:"per 100g"},
+    {name:"Hotcakes (3)",cal100:243,protein100:5,carbs100:43,fat100:7,brand:"McDonald's",per:"per 100g"},
+    {name:"Vanilla McFlurry",cal100:169,protein100:4,carbs100:27,fat100:5,brand:"McDonald's",per:"per 100g"},
+  ],
+  "Chick-fil-A": [
+    {name:"Chick-fil-A Sandwich",cal100:247,protein100:17,carbs100:29,fat100:8,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Spicy Deluxe Sandwich",cal100:265,protein100:17,carbs100:28,fat100:11,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Grilled Chicken Sandwich",cal100:180,protein100:18,carbs100:18,fat100:4,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"8pc Nuggets",cal100:229,protein100:20,carbs100:10,fat100:12,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"8pc Grilled Nuggets",cal100:130,protein100:25,carbs100:2,fat100:3,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Waffle Fries (Medium)",cal100:306,protein100:4,carbs100:40,fat100:15,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Mac & Cheese",cal100:183,protein100:7,carbs100:17,fat100:10,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Chicken Wrap",cal100:222,protein100:15,carbs100:22,fat100:8,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Grilled Market Salad",cal100:68,protein100:7,carbs100:6,fat100:2,brand:"Chick-fil-A",per:"per 100g"},
+    {name:"Frosted Lemonade",cal100:131,protein100:2,carbs100:26,fat100:3,brand:"Chick-fil-A",per:"per 100g"},
+  ],
+  "Starbucks": [
+    {name:"Caffe Latte (Grande)",cal100:65,protein100:3,carbs100:8,fat100:2,brand:"Starbucks",per:"per 100ml"},
+    {name:"Caramel Macchiato (Grande)",cal100:88,protein100:3,carbs100:14,fat100:2,brand:"Starbucks",per:"per 100ml"},
+    {name:"Iced Brown Sugar Oat Latte",cal100:83,protein100:1,carbs100:14,fat100:2,brand:"Starbucks",per:"per 100ml"},
+    {name:"Vanilla Sweet Cream Cold Brew",cal100:79,protein100:1,carbs100:10,fat100:4,brand:"Starbucks",per:"per 100ml"},
+    {name:"Frappuccino (Mocha Grande)",cal100:142,protein100:2,carbs100:24,fat100:4,brand:"Starbucks",per:"per 100ml"},
+    {name:"Egg Bites (Bacon & Gruyere)",cal100:182,protein100:13,carbs100:9,fat100:11,brand:"Starbucks",per:"per 100g"},
+    {name:"Spinach & Feta Wrap",cal100:173,protein100:9,carbs100:21,fat100:6,brand:"Starbucks",per:"per 100g"},
+    {name:"Cheese Danish",cal100:380,protein100:7,carbs100:44,fat100:20,brand:"Starbucks",per:"per 100g"},
+    {name:"Banana Nut Bread",cal100:309,protein100:4,carbs100:44,fat100:13,brand:"Starbucks",per:"per 100g"},
+    {name:"Protein Box (Eggs & Cheese)",cal100:148,protein100:9,carbs100:14,fat100:6,brand:"Starbucks",per:"per 100g"},
+  ],
+  "Subway": [
+    {name:"6" Turkey Breast",cal100:191,protein100:14,carbs100:30,fat100:3,brand:"Subway",per:"per 100g"},
+    {name:"6" Chicken Teriyaki",cal100:210,protein100:16,carbs100:32,fat100:3,brand:"Subway",per:"per 100g"},
+    {name:"6" Meatball Marinara",cal100:266,protein100:12,carbs100:33,fat100:10,brand:"Subway",per:"per 100g"},
+    {name:"6" Steak & Cheese",cal100:229,protein100:16,carbs100:28,fat100:7,brand:"Subway",per:"per 100g"},
+    {name:"6" Spicy Italian",cal100:280,protein100:12,carbs100:27,fat100:13,brand:"Subway",per:"per 100g"},
+    {name:"6" Tuna",cal100:278,protein100:13,carbs100:28,fat100:13,brand:"Subway",per:"per 100g"},
+    {name:"Veggie Delite 6"",cal100:148,protein100:6,carbs100:29,fat100:2,brand:"Subway",per:"per 100g"},
+    {name:"Rotisserie Chicken Bowl",cal100:142,protein100:18,carbs100:12,fat100:4,brand:"Subway",per:"per 100g"},
+  ],
+  "Panera": [
+    {name:"Broccoli Cheddar Soup (Bowl)",cal100:114,protein100:4,carbs100:10,fat100:7,brand:"Panera",per:"per 100g"},
+    {name:"Chicken Noodle Soup (Bowl)",cal100:60,protein100:5,carbs100:7,fat100:1,brand:"Panera",per:"per 100g"},
+    {name:"Turkey Sandwich",cal100:205,protein100:13,carbs100:25,fat100:5,brand:"Panera",per:"per 100g"},
+    {name:"Fuji Apple Chicken Salad",cal100:97,protein100:7,carbs100:8,fat100:4,brand:"Panera",per:"per 100g"},
+    {name:"Mac & Cheese (Bowl)",cal100:186,protein100:7,carbs100:22,fat100:8,brand:"Panera",per:"per 100g"},
+    {name:"Bagel with Cream Cheese",cal100:265,protein100:8,carbs100:46,fat100:6,brand:"Panera",per:"per 100g"},
+    {name:"Avocado, Egg & Cheese",cal100:218,protein100:10,carbs100:20,fat100:11,brand:"Panera",per:"per 100g"},
+  ],
+  "Dominos": [
+    {name:"Pepperoni Pizza (2 slices)",cal100:266,protein100:12,carbs100:30,fat100:11,brand:"Dominos",per:"per 100g"},
+    {name:"Cheese Pizza (2 slices)",cal100:241,protein100:11,carbs100:31,fat100:8,brand:"Dominos",per:"per 100g"},
+    {name:"BBQ Chicken Pizza (2 slices)",cal100:250,protein100:13,carbs100:32,fat100:8,brand:"Dominos",per:"per 100g"},
+    {name:"Chicken Wings (4pc)",cal100:238,protein100:20,carbs100:6,fat100:15,brand:"Dominos",per:"per 100g"},
+    {name:"Cheesy Bread",cal100:290,protein100:11,carbs100:36,fat100:12,brand:"Dominos",per:"per 100g"},
+    {name:"Pasta Primavera",cal100:135,protein100:6,carbs100:18,fat100:5,brand:"Dominos",per:"per 100g"},
+  ],
+  "Sweetgreen": [
+    {name:"Harvest Bowl",cal100:118,protein100:6,carbs100:14,fat100:5,brand:"Sweetgreen",per:"per 100g"},
+    {name:"Guacamole Greens",cal100:105,protein100:4,carbs100:9,fat100:7,brand:"Sweetgreen",per:"per 100g"},
+    {name:"Chicken Pesto Parm",cal100:122,protein100:9,carbs100:10,fat100:5,brand:"Sweetgreen",per:"per 100g"},
+    {name:"Shroomami Bowl",cal100:108,protein100:5,carbs100:14,fat100:4,brand:"Sweetgreen",per:"per 100g"},
+    {name:"Crispy Rice Bowl",cal100:140,protein100:7,carbs100:17,fat100:5,brand:"Sweetgreen",per:"per 100g"},
+  ],
+  "Chili's": [
+    {name:"Classic Bacon Burger",cal100:262,protein100:13,carbs100:22,fat100:13,brand:"Chili's",per:"per 100g"},
+    {name:"Chicken Fajitas",cal100:148,protein100:14,carbs100:12,fat100:5,brand:"Chili's",per:"per 100g"},
+    {name:"Baby Back Ribs (Half Rack)",cal100:280,protein100:19,carbs100:10,fat100:19,brand:"Chili's",per:"per 100g"},
+    {name:"Crispy Chicken Crispers",cal100:285,protein100:14,carbs100:24,fat100:15,brand:"Chili's",per:"per 100g"},
+    {name:"Chicken Enchilada Soup",cal100:88,protein100:6,carbs100:9,fat100:4,brand:"Chili's",per:"per 100g"},
+  ],
+  "Olive Garden": [
+    {name:"Spaghetti & Meatballs",cal100:148,protein100:7,carbs100:18,fat100:5,brand:"Olive Garden",per:"per 100g"},
+    {name:"Chicken Parmigiana",cal100:195,protein100:16,carbs100:14,fat100:8,brand:"Olive Garden",per:"per 100g"},
+    {name:"Fettuccine Alfredo",cal100:185,protein100:6,carbs100:20,fat100:9,brand:"Olive Garden",per:"per 100g"},
+    {name:"Chicken & Shrimp Carbonara",cal100:172,protein100:10,carbs100:16,fat100:8,brand:"Olive Garden",per:"per 100g"},
+    {name:"Breadstick",cal100:264,protein100:9,carbs100:42,fat100:7,brand:"Olive Garden",per:"per 100g"},
+    {name:"Minestrone Soup",cal100:44,protein100:2,carbs100:8,fat100:1,brand:"Olive Garden",per:"per 100g"},
+  ],
+};
+
+function getRestaurantResults(name){
+  return (RESTAURANT_MENUS[name]||[]).map(function(item,i){
+    return Object.assign({},item,{id:"rest_"+name+"_"+i});
+  });
+}
+
 export default function App({user,supabase}){
   var[screen,setScreen]=useState("main");
   var[tab,setTab]=useState("dashboard");
@@ -2444,7 +2561,14 @@ export default function App({user,supabase}){
                 ].map(function(r){return(
                   <button key={r.name} onClick={function(){
                     setFoodSearch(r.name);
-                    searchFoods(r.name);
+                    // Use local menu DB if available, otherwise search API
+                    var localResults=getRestaurantResults(r.name);
+                    if(localResults.length>0){
+                      setFoodSearchResults(localResults);
+                      setFoodSearchLoading(false);
+                    } else {
+                      searchFoods(r.name);
+                    }
                   }} style={{
                     display:"flex",alignItems:"center",gap:4,
                     background:foodSearch===r.name?"#1e1e2a":"#13131a",
