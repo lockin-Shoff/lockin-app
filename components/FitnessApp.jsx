@@ -2419,14 +2419,61 @@ export default function App({user,supabase}){
             {[["search","Search"],["browse","Browse"],["barcode","Barcode"],["custom","Custom"]].map(function(x){return <button key={x[0]} className="seg" onClick={()=>setFoodTab(x[0])} style={{background:foodTab===x[0]?(x[0]==="barcode"?"#e8a83e":x[0]==="search"?GC:"#1e1e2a"):"transparent",color:foodTab===x[0]?(x[0]==="barcode"||x[0]==="search"?"#0a0a0f":"#e8e4dc"):"#555",fontSize:9}}>{x[1]}</button>;})}
           </div>
           {foodTab==="search"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{fontSize:10,color:"#888",textAlign:"center"}}>Search 2M+ foods. Enter grams or oz for exact macros.</div>
             <div style={{display:"flex",gap:8}}>
-              <input className="inp" placeholder="Search (e.g. banana, chicken, oats...)" value={foodSearch}
+              <input className="inp" placeholder="Search any food or restaurant item..." value={foodSearch}
                 onChange={function(e){setFoodSearch(e.target.value);}}
                 onKeyDown={function(e){if(e.key==="Enter")searchFoods(foodSearch);}}
                 style={{flex:1}}/>
               <button onClick={function(){searchFoods(foodSearch);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13,flexShrink:0}}>Go</button>
             </div>
+            {/* Restaurant quick chips */}
+            {!selSearchFood&&(<div>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:6}}>POPULAR RESTAURANTS</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+                {[
+                  {name:"Chipotle",icon:"&#127798;"},
+                  {name:"McDonald's",icon:"&#127828;"},
+                  {name:"Chick-fil-A",icon:"&#127831;"},
+                  {name:"Starbucks",icon:"&#9749;"},
+                  {name:"Subway",icon:"&#129365;"},
+                  {name:"Panera",icon:"&#127838;"},
+                  {name:"Dominos",icon:"&#127829;"},
+                  {name:"Chili's",icon:"&#127798;"},
+                  {name:"Olive Garden",icon:"&#127837;"},
+                  {name:"Sweetgreen",icon:"&#129367;"},
+                ].map(function(r){return(
+                  <button key={r.name} onClick={function(){
+                    setFoodSearch(r.name);
+                    searchFoods(r.name);
+                  }} style={{
+                    display:"flex",alignItems:"center",gap:4,
+                    background:foodSearch===r.name?"#1e1e2a":"#13131a",
+                    border:"1px solid "+(foodSearch===r.name?GC:"#2a2a3a"),
+                    color:foodSearch===r.name?GC:"#888",
+                    borderRadius:99,padding:"5px 10px",cursor:"pointer",
+                    fontFamily:"inherit",fontWeight:600,fontSize:11,
+                    transition:"all .15s",
+                  }}>
+                    <span dangerouslySetInnerHTML={{__html:r.icon}}/>
+                    {r.name}
+                  </button>
+                );})}
+              </div>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:6}}>COMMON FOODS</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+                {["Chicken Breast","Greek Yogurt","Eggs","Oatmeal","Salmon","Ground Beef","Cottage Cheese","Protein Shake","Sweet Potato","Avocado"].map(function(f){return(
+                  <button key={f} onClick={function(){
+                    setFoodSearch(f);
+                    searchFoods(f);
+                  }} style={{
+                    background:"#13131a",border:"1px solid #2a2a3a",
+                    color:"#888",borderRadius:99,padding:"5px 10px",
+                    cursor:"pointer",fontFamily:"inherit",fontSize:11,
+                    transition:"all .15s",
+                  }}>{f}</button>
+                );})}
+              </div>
+            </div>)}
             {foodSearchLoading&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Searching...</div>}
             {!foodSearchLoading&&foodSearch.length>1&&foodSearchResults.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>No results. Try a different term.</div>}
             {foodSearchResults.length>0&&!selSearchFood&&(<div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
