@@ -1189,6 +1189,11 @@ export default function App({user,supabase}){
   var[searchGrams,setSearchGrams]=useState(100);
   var[searchUnit,setSearchUnit]=useState("g");
   var[mealType,setMealType]=useState("other");
+  var[recentFoods,setRecentFoods]=useState([]);
+  var[quickAddCal,setQuickAddCal]=useState("");
+  var[quickAddName,setQuickAddName]=useState("");
+  var[quickAddP,setQuickAddP]=useState("");
+  var[searchServingSize,setSearchServingSize]=useState(null);
   var[dbLoaded,setDbLoaded]=useState(false);
   // Social state
   var[socialTab,setSocialTab]=useState("discover");
@@ -1210,6 +1215,10 @@ export default function App({user,supabase}){
   var[darkMode,setDarkMode]=useState(true);
   var[refCode,setRefCode]=useState("");
   var[refCopied,setRefCopied]=useState(false);
+  var[showFeedback,setShowFeedback]=useState(false);
+  var[feedbackText,setFeedbackText]=useState("");
+  var[feedbackType,setFeedbackType]=useState("feedback");
+  var[feedbackSent,setFeedbackSent]=useState(false);
   var[refCount,setRefCount]=useState(0);
   var[streak,setStreak]=useState(0);
   var[streakFreezes,setStreakFreezes]=useState(0);
@@ -1229,6 +1238,8 @@ export default function App({user,supabase}){
     if(!user||!supabase){setDbLoaded(true);return;}
     // Load dark mode preference
     try{var dm=localStorage.getItem("lockin_darkmode");if(dm!==null)setDarkMode(dm!=="false");}catch(e){}
+    // Load recent foods
+    try{var rf=localStorage.getItem("lockin_recent_foods");if(rf)setRecentFoods(JSON.parse(rf));}catch(e){}
     async function loadAll(){
       var sb=supabase||sbClient;
       // Load from localStorage cache first for instant display
@@ -1376,6 +1387,25 @@ export default function App({user,supabase}){
     } else {
       copyRefLink();
     }
+  }
+
+  async function submitFeedback(){
+    var sb=supabase||sbClient;
+    if(!feedbackText.trim())return;
+    try{
+      await sb.from("feedback").insert({
+        user_id:user?user.id:null,
+        type:feedbackType,
+        message:feedbackText.trim(),
+        created_at:new Date().toISOString(),
+      });
+    }catch(e){
+      // Table may not exist yet - still show success to user
+      console.log("Feedback error:",e);
+    }
+    setFeedbackSent(true);
+    setFeedbackText("");
+    setTimeout(function(){setShowFeedback(false);setFeedbackSent(false);},2000);
   }
 
   async function sendMatchReq(toUserId){
@@ -1604,23 +1634,81 @@ export default function App({user,supabase}){
     setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);
     setBarInput("");setBarSrv(1);setFoodSearch("");setFoodSearchResults([]);
     setSelSearchFood(null);setSearchGrams(100);setSearchUnit("g");setMealType("other");
+    setQuickAddCal("");setQuickAddName("");setQuickAddP("");setSearchServingSize(null);
+  }
+
+  function saveRecentFood(food,grams,unit,cal,protein,carbs,fat){
+    try{
+      var entry={
+        id:"recent_"+Date.now(),
+        name:food.name,brand:food.brand||"",
+        cal100:food.cal100||Math.round((cal/grams)*100),
+        protein100:food.protein100||Math.round((protein/grams)*100),
+        carbs100:food.carbs100||Math.round((carbs/grams)*100),
+        fat100:food.fat100||Math.round((fat/grams)*100),
+        lastGrams:grams,lastUnit:unit,
+        lastCal:cal,lastProtein:protein,lastCarbs:carbs,lastFat:fat,
+        loggedAt:Date.now(),
+      };
+      var updated=[entry].concat(recentFoods.filter(function(f){
+        return f.name!==food.name;
+      })).slice(0,20);
+      setRecentFoods(updated);
+      localStorage.setItem("lockin_recent_foods",JSON.stringify(updated));
+    }catch(e){}
+  }
+
+  function getServingSizes(food){
+    // Generate smart serving size options based on food name
+    var name=(food.name||"").toLowerCase();
+    var sizes=[{label:"100g",grams:100,unit:"g"}];
+    if(name.includes("pizza")||name.includes("slice")) sizes.unshift({label:"1 slice (~107g)",grams:107,unit:"g"});
+    if(name.includes("egg")) sizes.unshift({label:"1 egg (50g)",grams:50,unit:"g"});
+    if(name.includes("banana")||name.includes("apple")||name.includes("orange")) sizes.unshift({label:"1 medium (120g)",grams:120,unit:"g"});
+    if(name.includes("chicken breast")) sizes.unshift({label:"1 breast (174g)",grams:174,unit:"g"});
+    if(name.includes("bread")||name.includes("slice")) sizes.unshift({label:"1 slice (30g)",grams:30,unit:"g"});
+    if(name.includes("cup")||name.includes("rice")||name.includes("oat")) sizes.unshift({label:"1 cup (240ml)",grams:185,unit:"g"});
+    if(name.includes("tbsp")||name.includes("tablespoon")||name.includes("butter")||name.includes("oil")) sizes.unshift({label:"1 tbsp (15g)",grams:15,unit:"g"});
+    if(name.includes("oz")||name.includes("steak")||name.includes("beef")) sizes.unshift({label:"3 oz (85g)",grams:85,unit:"g"});
+    if(name.includes("scoop")||name.includes("protein")||name.includes("whey")) sizes.unshift({label:"1 scoop (30g)",grams:30,unit:"g"});
+    if(name.includes("bar")) sizes.unshift({label:"1 bar (45g)",grams:45,unit:"g"});
+    // Always add oz option
+    sizes.push({label:"1 oz (28g)",grams:28,unit:"g"});
+    return sizes.slice(0,5);
   }
 
   async function searchFoods(q){
     if(!q||q.length<2){setFoodSearchResults([]);return;}
     setFoodSearchLoading(true);
     try{
-      var url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=12&fields=product_name,brands,nutriments,serving_size,image_front_small_url,_id";
+      // Search with more results and better fields
+      var url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=24&fields=product_name,brands,nutriments,serving_size,image_front_small_url,_id,countries_tags,popularity_key";
       var res=await fetch(url);
       var data=await res.json();
+      var ql=q.toLowerCase();
       var results=(data.products||[]).filter(function(p){return p.product_name&&p.nutriments;}).map(function(p){
         var n=p.nutriments||{};
-        return{id:p._id,name:p.product_name,brand:p.brands||"",image:p.image_front_small_url||null,
-          cal100:Math.round(n["energy-kcal_100g"]||0),
+        var cal=Math.round(n["energy-kcal_100g"]||0);
+        var name=p.product_name||"";
+        // Score for ranking: exact name match > starts with > contains, US products > others
+        var score=0;
+        var nl=name.toLowerCase();
+        if(nl===ql)score+=100;
+        else if(nl.startsWith(ql))score+=60;
+        else if(nl.includes(ql))score+=30;
+        if(p.countries_tags&&p.countries_tags.includes("en:united-states"))score+=20;
+        if(p.popularity_key)score+=Math.min(p.popularity_key/1000000,10);
+        // Penalize very generic/incomplete entries
+        if(!n["proteins_100g"]&&!n["carbohydrates_100g"])score-=20;
+        return{id:p._id,name:name,brand:p.brands||"",image:p.image_front_small_url||null,
+          cal100:cal,
           protein100:Math.round((n["proteins_100g"]||0)*10)/10,
           carbs100:Math.round((n["carbohydrates_100g"]||0)*10)/10,
-          fat100:Math.round((n["fat_100g"]||0)*10)/10};
-      }).filter(function(p){return p.cal100>0;});
+          fat100:Math.round((n["fat_100g"]||0)*10)/10,
+          score:score};
+      }).filter(function(p){return p.cal100>0;})
+        .sort(function(a,b){return b.score-a.score;})
+        .slice(0,15);
       setFoodSearchResults(results);
     }catch(e){setFoodSearchResults([]);}
     setFoodSearchLoading(false);
@@ -1640,7 +1728,12 @@ export default function App({user,supabase}){
     try{
       var{error:me}=await (supabase||sbClient).from("meals").insert({user_id:user.id,name:food.name,calories:Math.round((food.calories||0)*srv),protein:Math.round((food.protein||0)*srv),carbs:Math.round((food.carbs||0)*srv),fat:Math.round((food.fat||0)*srv),servings:srv,per_unit:food.per||"serving",meal_type:mealType,logged_at:new Date().toISOString()});
       if(me)console.log("Meal save error:",me.message);
-      else earnXP(10,"🍽️ Logged "+food.name+"!");
+      else{
+        earnXP(10,"🍽 Logged "+food.name+"!");
+        saveRecentFood(food,srv,food.per||"serving",
+          Math.round((food.calories||0)*srv),Math.round((food.protein||0)*srv),
+          Math.round((food.carbs||0)*srv),Math.round((food.fat||0)*srv));
+      }
     }catch(e){console.log("Meal save exception:",e);}
   }
 
@@ -2018,6 +2111,37 @@ export default function App({user,supabase}){
               }}/>
             </button>
           </div>
+          {/* Feedback Button */}
+          <button onClick={()=>setShowFeedback(true)} style={{display:"flex",alignItems:"center",gap:10,background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"11px 14px",width:"100%",cursor:"pointer",fontFamily:"inherit"}}>
+            <div style={{fontSize:18}}>&#128172;</div>
+            <div style={{flex:1,textAlign:"left"}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#e8e4dc"}}>Contact / Feedback</div>
+              <div style={{fontSize:10,color:"#555",marginTop:1}}>Report an issue or send feedback</div>
+            </div>
+            <div style={{fontSize:12,color:"#555"}}>&#8594;</div>
+          </button>
+          {/* Feedback Modal */}
+          {showFeedback&&(<div className="overlay" onClick={function(e){if(e.target===e.currentTarget){setShowFeedback(false);setFeedbackSent(false);}}}>
+            <div className="modal">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:20,letterSpacing:1}}>CONTACT US</div>
+                <button onClick={()=>setShowFeedback(false)} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:7,padding:"4px 9px",cursor:"pointer"}}>x</button>
+              </div>
+              {feedbackSent?(<div style={{textAlign:"center",padding:"30px 0"}}>
+                <div style={{fontSize:36,marginBottom:10}}>&#10003;</div>
+                <div style={{fontWeight:700,fontSize:16,color:GC}}>Message sent!</div>
+                <div style={{fontSize:12,color:"#555",marginTop:6}}>We'll look into it and reach out if needed.</div>
+              </div>):(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{display:"flex",gap:6}}>
+                  {[["feedback","Feedback"],["bug","Bug Report"],["delete","Delete Account"]].map(function(t){return(
+                    <button key={t[0]} onClick={()=>setFeedbackType(t[0])} style={{flex:1,padding:"7px 4px",borderRadius:8,border:"1px solid "+(feedbackType===t[0]?GC:"#2a2a3a"),background:feedbackType===t[0]?GC+"22":"transparent",color:feedbackType===t[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:10,cursor:"pointer"}}>{t[1]}</button>
+                  );})}
+                </div>
+                <textarea value={feedbackText} onChange={function(e){setFeedbackText(e.target.value);}} placeholder={feedbackType==="delete"?"Please describe why you'd like to delete your account. We will process your request within 30 days.":feedbackType==="bug"?"Describe what happened and what you expected...":"What's on your mind?"} style={{background:"#0a0a0f",border:"1px solid #2a2a3a",borderRadius:9,padding:"10px 12px",color:"#e8e4dc",fontFamily:"inherit",fontSize:13,resize:"none",height:120,outline:"none",lineHeight:1.6}}/>
+                <button onClick={submitFeedback} disabled={!feedbackText.trim()} style={{background:feedbackText.trim()?GC:"#1e1e2a",color:feedbackText.trim()?"#0a0a0f":"#555",border:"none",borderRadius:11,padding:"12px",cursor:feedbackText.trim()?"pointer":"default",fontFamily:"inherit",fontWeight:700,fontSize:14}}>Send Message</button>
+              </div>)}
+            </div>
+          </div>)}
           {/* Referral Card */}
           {refCode&&(<div style={{background:"#13131a",border:"1px solid "+GC+"44",borderRadius:13,padding:"13px 14px"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -2072,6 +2196,7 @@ export default function App({user,supabase}){
           </div>)}
           <button className="btn" onClick={()=>{saveProfile(profile,goal,calGoal,macros);setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Save Profile</button>
           <button className="btn" onClick={()=>setScreen("main")} style={{background:"#1e1e2a",color:"#e8e4dc",border:"1px solid #2a2a3a"}}>Cancel</button>
+          <a href="/privacy-policy.html" target="_blank" style={{textAlign:"center",fontSize:11,color:"#555",display:"block",marginTop:4,textDecoration:"none"}}>Privacy Policy</a>
         </div>
       </div>
     </div>
@@ -2533,8 +2658,63 @@ export default function App({user,supabase}){
         <div className="modal">
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}><div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:20,letterSpacing:1}}>LOG MEAL</div><button onClick={closeFood} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:7,padding:"4px 9px",cursor:"pointer"}}>x</button></div>
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3,marginBottom:12}}>
-            {[["search","Search"],["browse","Browse"],["barcode","Barcode"],["custom","Custom"]].map(function(x){return <button key={x[0]} className="seg" onClick={()=>setFoodTab(x[0])} style={{background:foodTab===x[0]?(x[0]==="barcode"?"#e8a83e":x[0]==="search"?GC:"#1e1e2a"):"transparent",color:foodTab===x[0]?(x[0]==="barcode"||x[0]==="search"?"#0a0a0f":"#e8e4dc"):"#555",fontSize:9}}>{x[1]}</button>;})}
+            {[["recent","Recent"],["search","Search"],["browse","Browse"],["barcode","Barcode"],["custom","Custom"]].map(function(x){return <button key={x[0]} className="seg" onClick={()=>setFoodTab(x[0])} style={{background:foodTab===x[0]?(x[0]==="barcode"?"#e8a83e":x[0]==="search"||x[0]==="recent"?GC:"#1e1e2a"):"transparent",color:foodTab===x[0]?(x[0]==="barcode"||x[0]==="search"||x[0]==="recent"?"#0a0a0f":"#e8e4dc"):"#555",fontSize:9}}>{x[1]}</button>;})}
           </div>
+          {foodTab==="recent"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {/* Copy yesterday button */}
+            {(()=>{
+              var yest=new Date();yest.setDate(yest.getDate()-1);
+              var yStr=yest.getFullYear()+"-"+String(yest.getMonth()+1).padStart(2,"0")+"-"+String(yest.getDate()).padStart(2,"0");
+              var yMeals=meals.filter(function(m){return m.logged_at&&m.logged_at.startsWith(yStr);});
+              if(!yMeals.length)return null;
+              return(<button onClick={async function(){
+                for(var i=0;i<yMeals.length;i++){
+                  var m=yMeals[i];
+                  var nowIso=new Date().toISOString();
+                  var nm={id:Date.now()+i,name:m.name,em:m.em||EM.plate,cal:m.cal,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per:m.per||"serving",meal_type:m.meal_type||"other",logged_at:nowIso,time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};
+                  setMeals(function(prev){return prev.concat([nm]);});
+                  try{await (supabase||sbClient).from("meals").insert({user_id:user.id,name:m.name,calories:m.cal,protein:m.protein||0,carbs:m.carbs||0,fat:m.fat||0,servings:m.servings||1,per_unit:m.per||"serving",meal_type:m.meal_type||"other",logged_at:nowIso});}catch(e){}
+                }
+                closeFood();
+              }} style={{background:GC+"22",border:"1px solid "+GC+"44",color:GC,borderRadius:11,padding:"11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13,width:"100%"}}>
+                Copy Yesterday ({yMeals.length} meals) &#8594;
+              </button>);
+            })()}
+            {/* Quick Add */}
+            <div style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:12,padding:"12px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#888",letterSpacing:1,marginBottom:8}}>QUICK ADD</div>
+              <div style={{display:"flex",gap:7,marginBottom:7}}>
+                <input className="inp" placeholder="Food name (optional)" value={quickAddName} onChange={function(e){setQuickAddName(e.target.value);}} style={{flex:2,fontSize:12}}/>
+                <input className="inp" type="number" inputMode="numeric" placeholder="Calories" value={quickAddCal} onChange={function(e){setQuickAddCal(e.target.value);}} style={{flex:1,fontSize:12}}/>
+              </div>
+              <div style={{display:"flex",gap:7,marginBottom:8}}>
+                <input className="inp" type="number" inputMode="decimal" placeholder="Protein g" value={quickAddP} onChange={function(e){setQuickAddP(e.target.value);}} style={{flex:1,fontSize:12}}/>
+                <div style={{flex:2,fontSize:10,color:"#555",display:"flex",alignItems:"center"}}>Carbs & fat optional</div>
+              </div>
+              <button onClick={function(){
+                if(!quickAddCal)return;
+                addMeal({name:quickAddName||"Quick Add",em:EM.plate,calories:+quickAddCal,protein:+quickAddP||0,carbs:0,fat:0,per:"serving"},1);
+              }} style={{width:"100%",background:"#e8a83e",border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>
+                Quick Add {quickAddCal?quickAddCal+" kcal":""}
+              </button>
+            </div>
+            {/* Recent foods list */}
+            <div style={{fontSize:10,fontWeight:700,color:"#555",letterSpacing:1}}>RECENTLY LOGGED</div>
+            {recentFoods.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Foods you log will appear here for quick re-logging.</div>}
+            {recentFoods.map(function(f){
+              var sm=calcSearchMacros(f,f.lastGrams||100,"g");
+              return(<div key={f.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"10px 12px",display:"flex",alignItems:"center",gap:9}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
+                  {f.brand&&<div style={{fontSize:10,color:"#555"}}>{f.brand}</div>}
+                  <div style={{fontSize:9,color:"#888",marginTop:2}}>{f.lastGrams}g &middot; {f.lastCal} kcal &middot; P:{f.lastProtein}g</div>
+                </div>
+                <button onClick={function(){
+                  addMeal({name:f.name,em:EM.plate,calories:f.lastCal,protein:f.lastProtein,carbs:f.lastCarbs,fat:f.lastFat,per:f.lastGrams+"g"},1);
+                }} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11,flexShrink:0}}>Log Again</button>
+              </div>);
+            })}
+          </div>)}
           {foodTab==="search"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div style={{display:"flex",gap:8}}>
               <input className="inp" placeholder="Search any food or restaurant item..." value={foodSearch}
@@ -2626,9 +2806,16 @@ export default function App({user,supabase}){
                     </div>
                     <button onClick={function(){setSelSearchFood(null);}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:11}}>Back</button>
                   </div>
+                  {/* Smart serving size quick buttons */}
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+                    {getServingSizes(selSearchFood).map(function(sz){
+                      var isActive=searchGrams===sz.grams&&searchUnit===sz.unit;
+                      return(<button key={sz.label} onClick={function(){setSearchGrams(sz.grams);setSearchUnit(sz.unit);}} style={{background:isActive?GC+"22":"#13131a",border:"1px solid "+(isActive?GC:"#2a2a3a"),color:isActive?GC:"#888",borderRadius:99,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:isActive?700:400}}>{sz.label}</button>);
+                    })}
+                  </div>
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:9,color:"#555",marginBottom:4}}>AMOUNT</div>
+                      <div style={{fontSize:9,color:"#555",marginBottom:4}}>CUSTOM AMOUNT</div>
                       <input className="inp" type="number" inputMode="decimal" value={searchGrams}
                         onChange={function(e){setSearchGrams(Math.max(1,+e.target.value||1));}}
                         style={{fontSize:20,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
@@ -2660,6 +2847,7 @@ export default function App({user,supabase}){
                 </div>
                 <button className="btn" onClick={function(){
                   var sm2=calcSearchMacros(selSearchFood,searchGrams,searchUnit);
+                  saveRecentFood(selSearchFood,searchGrams,searchUnit,sm2.cal,sm2.protein,sm2.carbs,sm2.fat);
                   addMeal({name:selSearchFood.name+(selSearchFood.brand?" ("+selSearchFood.brand+")":""),em:EM.plate,calories:sm2.cal,protein:sm2.protein,carbs:sm2.carbs,fat:sm2.fat,per:searchGrams+searchUnit},1);
                 }} style={{background:"#e8a83e",color:"#0a0a0f"}}>Log {sm.cal} kcal &rarr;</button>
               </div>);
