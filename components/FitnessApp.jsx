@@ -448,7 +448,7 @@ function MuscleDiagram({exerciseName,color}){
       var op=0.55+(pct/100)*0.4+(isPrimary?pulse*0.25:0);
       var glowColor=isPrimary?col:"none";
       return(<g key={m}>
-        {isPrimary&&<path d={pd} fill={col} opacity={0.25+Math.abs(pulse)*0.3} style={{filter:"blur(4px)"}}/>}
+        {isPrimary&&<path d={pd} fill={col} opacity={0.25+Math.abs(pulse)*0.3} style={{opacity:0.4}}/>}
         <path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth={isPrimary?"0.5":"0"} strokeOpacity="0.4"/>
         {isPrimary&&<path d={pd} fill="none" stroke={col} strokeWidth="0.8" strokeOpacity="0.7"/>}
       </g>);
@@ -468,7 +468,6 @@ function MuscleDiagram({exerciseName,color}){
                   <stop offset="0%" stopColor="#fff" stopOpacity="0.12"/>
                   <stop offset="100%" stopColor="#000" stopOpacity="0.25"/>
                 </linearGradient>
-                <filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               </defs>
               {(side[1]?BACK_BODY:FRONT_BODY).map(function(p,i){
                 return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.35" strokeOpacity="0.5"/>;
@@ -817,38 +816,34 @@ function useTimer(){
   var[e,sE]=useState(0),[run,sR]=useState(false);
   var startRef=useRef(null);
   var baseRef=useRef(0);
-  var rafRef=useRef(null);
+  var intRef=useRef(null);
 
   useEffect(function(){
     if(run){
       startRef.current=Date.now();
-      function tick(){
+      intRef.current=setInterval(function(){
         var elapsed=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
         sE(elapsed);
-        rafRef.current=requestAnimationFrame(tick);
-      }
-      rafRef.current=requestAnimationFrame(tick);
+      },1000);
     } else {
-      if(rafRef.current)cancelAnimationFrame(rafRef.current);
-      // Save base when pausing
+      clearInterval(intRef.current);
       if(startRef.current){
         baseRef.current=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
         startRef.current=null;
       }
     }
-    return function(){if(rafRef.current)cancelAnimationFrame(rafRef.current);};
+    return function(){clearInterval(intRef.current);};
   },[run]);
 
-  // Handle page visibility change - recalculate when app comes back
+  // Recalculate when page becomes visible again
   useEffect(function(){
     function onVisible(){
-      if(run&&startRef.current){
-        var elapsed=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
-        sE(elapsed);
+      if(!document.hidden&&run&&startRef.current){
+        sE(baseRef.current+Math.floor((Date.now()-startRef.current)/1000));
       }
     }
-    document.addEventListener("visibilitychange",onVisible);
-    return function(){document.removeEventListener("visibilitychange",onVisible);};
+    if(typeof document!=="undefined")document.addEventListener("visibilitychange",onVisible);
+    return function(){if(typeof document!=="undefined")document.removeEventListener("visibilitychange",onVisible);};
   },[run]);
 
   function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
