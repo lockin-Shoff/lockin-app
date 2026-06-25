@@ -1418,8 +1418,44 @@ export default function App({user,supabase}){
     var sb=supabase||sbClient;
     setFeedLoading(true);
     try{
-      var{data}=await sb.rpc("get_my_feed",{limit_count:30});
-      setFeed(data||[]);
+      // Get accepted match partner IDs
+      var{data:mrs}=await sb.from("match_requests")
+        .select("from_user_id,to_user_id")
+        .or("from_user_id.eq."+user.id+",to_user_id.eq."+user.id)
+        .eq("status","accepted");
+      var partnerIds=[user.id];
+      (mrs||[]).forEach(function(m){
+        partnerIds.push(m.from_user_id===user.id?m.to_user_id:m.from_user_id);
+      });
+      // Get feed posts from self + partners
+      var{data:posts}=await sb.from("feed_posts")
+        .select("*, author:profiles!feed_posts_user_id_fkey(display_name,username,avatar_index,xp,level)")
+        .in("user_id",partnerIds)
+        .order("created_at",{ascending:false})
+        .limit(30);
+      // Get reaction counts
+      var postIds=(posts||[]).map(function(p){return p.id;});
+      var reactionMap={};
+      if(postIds.length>0){
+        var{data:reactions}=await sb.from("post_reactions").select("post_id,reaction").in("post_id",postIds);
+        (reactions||[]).forEach(function(r){
+          if(!reactionMap[r.post_id])reactionMap[r.post_id]={fire:0,muscle:0,clap:0};
+          reactionMap[r.post_id][r.reaction]=(reactionMap[r.post_id][r.reaction]||0)+1;
+        });
+      }
+      var enriched=(posts||[]).map(function(p){
+        var rc=reactionMap[p.id]||{fire:0,muscle:0,clap:0};
+        var a=p.author||{};
+        return{
+          id:p.id,user_id:p.user_id,post_type:p.post_type,
+          title:p.title,content:p.content,created_at:p.created_at,
+          display_name:a.display_name||a.username||"User",
+          username:a.username,avatar_index:a.avatar_index||0,
+          xp:a.xp||0,level:a.level||1,
+          reaction_fire:rc.fire,reaction_muscle:rc.muscle,reaction_clap:rc.clap,
+        };
+      });
+      setFeed(enriched);
     }catch(e){console.log("Feed error:",e);}
     setFeedLoading(false);
   }
