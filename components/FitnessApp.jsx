@@ -1336,7 +1336,6 @@ export default function App({user,supabase}){
     }catch(e){console.log("Social load error:",e);}
     setSocialLoaded(true);
     loadReferralData();
-    loadFeed();
   }
 
   // ── Referral System ──────────────────────────────────────
@@ -1502,11 +1501,22 @@ export default function App({user,supabase}){
   async function loadPostComments(postId){
     var sb=supabase||sbClient;
     try{
-      var{data}=await sb.from("post_comments")
-        .select("*, author:profiles!post_comments_user_id_fkey(display_name,username,avatar_index)")
-        .eq("post_id",postId).order("created_at",{ascending:true});
-      setPostComments(function(p){return Object.assign({},p,{[postId]:data||[]});});
-    }catch(e){}
+      var{data:comments}=await sb.from("post_comments")
+        .select("*")
+        .eq("post_id",postId)
+        .order("created_at",{ascending:true});
+      // Get profile info for comment authors
+      var uids=[...new Set((comments||[]).map(function(c){return c.user_id;}))];
+      var profileMap={};
+      if(uids.length>0){
+        var{data:profs}=await sb.from("profiles").select("id,display_name,username,avatar_index").in("id",uids);
+        (profs||[]).forEach(function(p){profileMap[p.id]=p;});
+      }
+      var enriched=(comments||[]).map(function(c){
+        return Object.assign({},c,{author:profileMap[c.user_id]||{}});
+      });
+      setPostComments(function(p){return Object.assign({},p,{[postId]:enriched});});
+    }catch(e){console.log("Comments error:",e);}
   }
 
   function timeAgo(ts){
@@ -1899,8 +1909,8 @@ export default function App({user,supabase}){
     var cutStr=cutoff.toISOString().split("T")[0];
 
     // Filter workouts/meals to selected range
-    var rngWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at>=cutStr;}).sort(function(a,b){return b.logged_at>a.logged_at?1:-1;});
-    var rngMeals=meals.filter(function(m){return m.logged_at&&m.logged_at>=cutStr;}).sort(function(a,b){return b.logged_at>a.logged_at?1:-1;});
+    var rngWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at>=cutStr;});
+    var rngMeals=meals.filter(function(m){return m.logged_at&&m.logged_at>=cutStr;});
 
     // Group workouts by date
     var wByDate={};
