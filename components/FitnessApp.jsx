@@ -2527,7 +2527,7 @@ export default function App({user,supabase}){
                 setShowRec(true);
                 timer.setRunning(true);
               }} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>Continue</button>
-              <button onClick={function(){if(window.confirm("Discard this workout?")){{setActiveWorkout(null);clearWorkoutDraft();}}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,padding:"0 4px"}}>x</button>
+              <button onClick={function(){if(window.confirm("Discard this workout?")){setActiveWorkout(null);clearWorkoutDraft();}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,padding:"0 4px"}}>x</button>
             </div>
           </div>)}
           {/* Resume workout prompt */}
