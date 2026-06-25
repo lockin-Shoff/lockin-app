@@ -1200,6 +1200,7 @@ export default function App({user,supabase}){
   var[wSug,setWSug]=useState(null);
   var[showRec,setShowRec]=useState(false);
   var[showResumePrompt,setShowResumePrompt]=useState(false);
+  var[activeWorkout,setActiveWorkout]=useState(null);
   var[recName,setRecName]=useState("");
   var[moves,setMoves]=useState([]);
   var[curMove,setCurMove]=useState("");
@@ -1797,23 +1798,34 @@ export default function App({user,supabase}){
   }
   function remMove(mi){setMoves(moves.filter(function(_,i){return i!==mi;}));if(activeIdx===mi)setActiveIdx(null);}
 
-  async function saveW(){
+  function minimizeW(){
+    var snap={moves:moves,recName:recName,elapsed:timer.elapsed};
+    setActiveWorkout(snap);
+    saveWorkoutDraft();
+    setShowRec(false);
+    timer.setRunning(false);
+  }
+
+  async function finishW(){
     var ts=moves.reduce(function(s,m){return s+m.sets.length;},0);
     var ds=moves.reduce(function(s,m){return s+m.sets.filter(function(x){return x.done;}).length;},0);
     var c=Math.round((timer.elapsed/60)*7);
     var recNow=new Date().toISOString();
-    setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",logged_at:recNow,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,sets:(()=>{var s=[];moves.forEach(function(mv){mv.sets.forEach(function(st){s.push(Object.assign({exercise:mv.name},st));});});return s;})(),totalSets:ts,doneSets:ds}]));
-    setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();clearWorkoutDraft();
-    postToFeed("workout",recName||"Recorded Workout",Math.max(1,Math.round(timer.elapsed/60))+" min · "+ts+" sets · "+c+" kcal burned");
-    earnXP(75,"💪 Completed workout!");
-    checkAndUpdateStreak();
-    if(user&&supabase){
+    setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",logged_at:recNow,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,sets:(function(){var s=[];moves.forEach(function(mv){mv.sets.forEach(function(st){s.push(Object.assign({exercise:mv.name},st));});});return s;})(),totalSets:ts,doneSets:ds}]));
+    setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
+    setActiveWorkout(null);clearWorkoutDraft();
+    if(user){
       try{
         var{data:wd}=await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:recName||"Recorded Workout",category:"Strength",duration:Math.max(1,Math.round(timer.elapsed/60)),calories:c}).select().single();
         if(wd){var setRows=[];moves.forEach(function(mv){mv.sets.forEach(function(s,i){setRows.push({workout_id:wd.id,exercise:mv.name,set_number:i+1,reps:s.reps,weight:s.weight,note:s.note,done:s.done});});});if(setRows.length)await (supabase||sbClient).from("workout_sets").insert(setRows);}
       }catch(e){}
     }
+    postToFeed("workout",recName||"Recorded Workout",Math.max(1,Math.round(timer.elapsed/60))+" min · "+ts+" sets · "+c+" kcal burned");
+    earnXP(75,"💪 Completed workout!");
+    checkAndUpdateStreak();
   }
+
+  async function saveW(){return finishW();}
 
   function exportH(w){
     var end=new Date(),start=new Date(end-((w.dur||1)*60000));
@@ -2437,7 +2449,7 @@ export default function App({user,supabase}){
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
             <button onClick={()=>{if(window.confirm("Discard workout?")){setShowRec(false);setMoves([]);setRecName("");timer.reset();setActiveIdx(null);setRestSecs(null);clearWorkoutDraft();}}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:8,padding:"6px 11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Discard</button>
             <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:18,letterSpacing:1,color:GC}}>RECORD WORKOUT</div>
-            <button onClick={saveW} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"6px 13px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Save</button>
+            <button onClick={minimizeW} style={{background:"#1e1e2a",border:"1px solid "+GC,color:GC,borderRadius:8,padding:"6px 13px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Minimize</button>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:9}}>
             <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:30,color:timer.running?GC:"#333",letterSpacing:3,lineHeight:1,minWidth:86}}>{timer.fmt(timer.elapsed)}</div>
@@ -2488,7 +2500,7 @@ export default function App({user,supabase}){
         </div>
         <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0a0a0f",borderTop:"1px solid #1a1a22",padding:"10px 14px",display:"flex",gap:9}}>
           <div style={{flex:1}}><div style={{fontSize:10,color:"#555"}}>~{Math.round(timer.elapsed/60*7)} kcal - {ds2} sets done</div><div style={{fontSize:11,color:"#888"}}>{timer.fmt(timer.elapsed)} elapsed</div></div>
-          <button onClick={saveW} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 20px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>Finish and Save</button>
+          <button onClick={finishW} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 20px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>Finish &amp; Save</button>
         </div>
       </div>
     );
@@ -2521,6 +2533,23 @@ export default function App({user,supabase}){
       <div style={{padding:"14px",paddingBottom:80}}>
 
         {tab==="dashboard"&&(<div style={{display:"flex",flexDirection:"column",gap:11}}>
+          {/* Active/minimized workout banner */}
+          {activeWorkout&&!showRec&&(<div style={{background:"#13131a",border:"2px solid "+GC,borderRadius:13,padding:"12px 14px",marginBottom:4}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{fontSize:22}}>&#9201;</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13}}>{activeWorkout.recName||"Recorded Workout"} <span style={{color:GC}}>&#9679; Active</span></div>
+                <div style={{fontSize:10,color:"#888"}}>{activeWorkout.moves?activeWorkout.moves.length:0} exercises &middot; {Math.floor((activeWorkout.elapsed||0)/60)}:{String((activeWorkout.elapsed||0)%60).padStart(2,"0")} elapsed</div>
+              </div>
+              <button onClick={function(){
+                setMoves(activeWorkout.moves||[]);
+                setRecName(activeWorkout.recName||"");
+                setShowRec(true);
+                timer.setRunning(true);
+              }} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>Continue</button>
+              <button onClick={function(){if(window.confirm("Discard this workout?")){{setActiveWorkout(null);clearWorkoutDraft();}}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,padding:"0 4px"}}>x</button>
+            </div>
+          </div>)}
           {/* Resume workout prompt */}
           {showResumePrompt&&(<div style={{background:"#13131a",border:"2px solid "+GC,borderRadius:13,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
             <div style={{fontSize:22}}>&#9202;</div>
