@@ -2429,7 +2429,7 @@ export default function App({user,supabase}){
           </div>
         </div>
         <div style={{display:"flex",gap:3,marginTop:9}}>
-          {[["dashboard","Overview"],["workouts","Exercise"],["nutrition","Nutrition"],["goals","Goals"],["social","Social"]].map(function(x){return <button key={x[0]} onClick={()=>setTab(x[0])} style={{flex:1,padding:"6px 0",borderRadius:7,border:"none",cursor:"pointer",background:tab===x[0]?GC:"transparent",color:tab===x[0]?"#0a0a0f":"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,letterSpacing:0.3,textTransform:"uppercase",transition:"all .2s",position:"relative"}}>
+          {[["dashboard","Overview"],["workouts","Exercise"],["nutrition","Nutrition"],["goals","Goals"],["social","Social"]].map(function(x){return <button key={x[0]} onClick={function(){setTab(x[0]);if(x[0]==="social"){loadSocial();}}} style={{flex:1,padding:"6px 0",borderRadius:7,border:"none",cursor:"pointer",background:tab===x[0]?GC:"transparent",color:tab===x[0]?"#0a0a0f":"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,letterSpacing:0.3,textTransform:"uppercase",transition:"all .2s",position:"relative"}}>
             {x[1]}
             {x[0]==="social"&&pendingIn.length>0&&<div style={{position:"absolute",top:2,right:4,width:6,height:6,borderRadius:"50%",background:"#ff6b35"}}/>}
           </button>;})}
@@ -2667,7 +2667,7 @@ export default function App({user,supabase}){
 
           {/* Sub tabs */}
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3}}>
-            {[["feed","Feed"],["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={()=>setSocialTab(x[0])} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
+            {[["feed","Feed"],["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={function(){setSocialTab(x[0]);if(x[0]==="feed")loadFeed();}} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
           </div>
 
           {/* FEED */}
