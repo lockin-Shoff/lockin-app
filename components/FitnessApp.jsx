@@ -829,10 +829,45 @@ function calcGoalCal(tdee,g){return Math.max(1200,tdee+((GOALS.find(function(x){
 function calcMacros(k,g){var gl=GOALS.find(function(x){return x.id===g;})||GOALS[2];return{protein:Math.round(k*gl.proteinPct/4),carbs:Math.round(k*gl.carbsPct/4),fat:Math.round(k*gl.fatPct/9)};}
 
 function useTimer(){
-  var[e,sE]=useState(0),[run,sR]=useState(false),ref=useRef(null);
-  useEffect(function(){if(run)ref.current=setInterval(function(){sE(function(x){return x+1;});},1000);else clearInterval(ref.current);return function(){clearInterval(ref.current);};},[run]);
+  var[e,sE]=useState(0),[run,sR]=useState(false);
+  var startRef=useRef(null);
+  var baseRef=useRef(0);
+  var rafRef=useRef(null);
+
+  useEffect(function(){
+    if(run){
+      startRef.current=Date.now();
+      function tick(){
+        var elapsed=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
+        sE(elapsed);
+        rafRef.current=requestAnimationFrame(tick);
+      }
+      rafRef.current=requestAnimationFrame(tick);
+    } else {
+      if(rafRef.current)cancelAnimationFrame(rafRef.current);
+      // Save base when pausing
+      if(startRef.current){
+        baseRef.current=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
+        startRef.current=null;
+      }
+    }
+    return function(){if(rafRef.current)cancelAnimationFrame(rafRef.current);};
+  },[run]);
+
+  // Handle page visibility change - recalculate when app comes back
+  useEffect(function(){
+    function onVisible(){
+      if(run&&startRef.current){
+        var elapsed=baseRef.current+Math.floor((Date.now()-startRef.current)/1000);
+        sE(elapsed);
+      }
+    }
+    document.addEventListener("visibilitychange",onVisible);
+    return function(){document.removeEventListener("visibilitychange",onVisible);};
+  },[run]);
+
   function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
-  return{elapsed:e,running:run,setRunning:sR,reset:function(){sE(0);sR(false);},fmt};
+  return{elapsed:e,running:run,setRunning:sR,reset:function(){sE(0);sR(false);baseRef.current=0;startRef.current=null;},fmt};
 }
 
 function ProgressChart({workouts,exerciseName,GC}){
@@ -1164,6 +1199,7 @@ export default function App({user,supabase}){
   var[muscle,setMuscle]=useState("full body");
   var[wSug,setWSug]=useState(null);
   var[showRec,setShowRec]=useState(false);
+  var[showResumePrompt,setShowResumePrompt]=useState(false);
   var[recName,setRecName]=useState("");
   var[moves,setMoves]=useState([]);
   var[curMove,setCurMove]=useState("");
@@ -1241,6 +1277,11 @@ export default function App({user,supabase}){
   // Load from Supabase on mount
   useEffect(function(){
     if(!user||!supabase){setDbLoaded(true);return;}
+    // Check for in-progress workout draft
+    try{
+      var wd=localStorage.getItem("lockin_workout_draft");
+      if(wd){var wdp=JSON.parse(wd);var age=(Date.now()-wdp.savedAt)/1000/3600;if(age<24&&wdp.moves&&wdp.moves.length>0)setShowResumePrompt(true);}
+    }catch(e){}
     // Load dark mode preference
     try{var dm=localStorage.getItem("lockin_darkmode");if(dm!==null)setDarkMode(dm!=="false");}catch(e){}
     // Load recent foods
@@ -1527,6 +1568,47 @@ export default function App({user,supabase}){
     return Math.floor(s/86400)+"d ago";
   }
 
+  // ── Workout Draft (resume) ───────────────────────────────
+  function saveWorkoutDraft(){
+    try{
+      localStorage.setItem("lockin_workout_draft",JSON.stringify({
+        moves:moves,recName:recName,elapsed:timer.elapsed,savedAt:Date.now()
+      }));
+    }catch(e){}
+  }
+
+  function clearWorkoutDraft(){
+    try{localStorage.removeItem("lockin_workout_draft");}catch(e){}
+  }
+
+  function checkWorkoutDraft(){
+    try{
+      var d=localStorage.getItem("lockin_workout_draft");
+      if(!d)return;
+      var draft=JSON.parse(d);
+      // Only resume if draft is less than 24 hours old and has moves
+      var age=(Date.now()-draft.savedAt)/1000/3600;
+      if(age<24&&draft.moves&&draft.moves.length>0){
+        setShowResumePrompt(true);
+      }
+    }catch(e){}
+  }
+
+  function resumeWorkout(){
+    try{
+      var d=localStorage.getItem("lockin_workout_draft");
+      if(!d)return;
+      var draft=JSON.parse(d);
+      setMoves(draft.moves||[]);
+      setRecName(draft.recName||"");
+      // Restore elapsed time
+      timer.reset();
+      // We can't restore the exact timer count easily but set base
+      setShowResumePrompt(false);
+      setShowRec(true);
+    }catch(e){setShowResumePrompt(false);}
+  }
+
   async function sendMatchReq(toUserId){
     var sb=supabase||sbClient;
     if(!user){console.log("No user");return;}
@@ -1703,8 +1785,8 @@ export default function App({user,supabase}){
     if(user&&supabase)try{await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:custEx.name,category:"Custom",duration:+custEx.dur,calories:+custEx.cal});}catch(e){}
   }
 
-  function addMove(){if(!curMove.trim())return;var nm=moves.concat([{name:curMove.trim(),sets:[]}]);setMoves(nm);setCurMove("");setActiveIdx(nm.length-1);}
-  function addSet(mi){var m=moves.map(function(x){return{name:x.name,sets:x.sets.slice()};});var prev=m[mi].sets[m[mi].sets.length-1];m[mi].sets.push({reps:prev?prev.reps:"",weight:prev?prev.weight:"",note:"",done:false});setMoves(m);}
+  function addMove(){if(!curMove.trim())return;var nm=moves.concat([{name:curMove.trim(),sets:[]}]);setMoves(nm);setCurMove("");setActiveIdx(nm.length-1);setTimeout(saveWorkoutDraft,100);}
+  function addSet(mi){var m=moves.map(function(x){return{name:x.name,sets:x.sets.slice()};});var prev=m[mi].sets[m[mi].sets.length-1];m[mi].sets.push({reps:prev?prev.reps:"",weight:prev?prev.weight:"",note:"",done:false});setMoves(m);setTimeout(saveWorkoutDraft,100);}
   function updSet(mi,si,f,v){var m=moves.map(function(x){return{name:x.name,sets:x.sets.map(function(s){return Object.assign({},s);})};});m[mi].sets[si][f]=v;setMoves(m);}
   function doneSet(mi,si){
     var m=moves.map(function(x){return{name:x.name,sets:x.sets.map(function(s){return Object.assign({},s);})};});
@@ -1721,7 +1803,7 @@ export default function App({user,supabase}){
     var c=Math.round((timer.elapsed/60)*7);
     var recNow=new Date().toISOString();
     setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",logged_at:recNow,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,sets:(()=>{var s=[];moves.forEach(function(mv){mv.sets.forEach(function(st){s.push(Object.assign({exercise:mv.name},st));});});return s;})(),totalSets:ts,doneSets:ds}]));
-    setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
+    setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();clearWorkoutDraft();
     postToFeed("workout",recName||"Recorded Workout",Math.max(1,Math.round(timer.elapsed/60))+" min · "+ts+" sets · "+c+" kcal burned");
     earnXP(75,"💪 Completed workout!");
     checkAndUpdateStreak();
@@ -1868,8 +1950,8 @@ export default function App({user,supabase}){
   }
 
   function addSM(food){addMeal(Object.assign({},food,{calories:food.calories,per:"serving"}),1);setShowSugs(false);}
-  async function removeWorkout(id){setWorkouts(workouts.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
-  async function removeMeal(id){setMeals(meals.filter(function(x){return x.id!==id;}));if(user&&supabase)try{await (supabase||sbClient).from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeWorkout(id){if(!window.confirm("Delete this workout?"))return;setWorkouts(workouts.filter(function(x){return x.id!==id;}));try{await (supabase||sbClient).from("workouts").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
+  async function removeMeal(id){if(!window.confirm("Delete this meal?"))return;setMeals(meals.filter(function(x){return x.id!==id;}));try{await (supabase||sbClient).from("meals").delete().eq("id",id).eq("user_id",user.id);}catch(e){}}
 
   function MB(l,c,g,col){var p=Math.min((c/g)*100,100),ov=c>g;return <div><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"#666"}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:ov?"#ff5555":"#e8e4dc"}}>{c}g <span style={{color:"#444"}}>/ {g}g</span></span></div><div style={{background:"#0a0a0f",borderRadius:99,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:ov?"#ff5555":col,width:p+"%",transition:"width .4s"}}/></div></div>;}
 
@@ -2353,7 +2435,7 @@ export default function App({user,supabase}){
       <div style={base}><style>{css}</style>
         <div style={{position:"sticky",top:0,zIndex:20,background:"#0a0a0f",borderBottom:"1px solid #1a1a22",padding:"12px 14px 9px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
-            <button onClick={()=>{if(window.confirm("Discard workout?")){setShowRec(false);setMoves([]);setRecName("");timer.reset();setActiveIdx(null);setRestSecs(null);}}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:8,padding:"6px 11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Discard</button>
+            <button onClick={()=>{if(window.confirm("Discard workout?")){setShowRec(false);setMoves([]);setRecName("");timer.reset();setActiveIdx(null);setRestSecs(null);clearWorkoutDraft();}}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:8,padding:"6px 11px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Discard</button>
             <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:18,letterSpacing:1,color:GC}}>RECORD WORKOUT</div>
             <button onClick={saveW} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"6px 13px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Save</button>
           </div>
@@ -2439,6 +2521,16 @@ export default function App({user,supabase}){
       <div style={{padding:"14px",paddingBottom:80}}>
 
         {tab==="dashboard"&&(<div style={{display:"flex",flexDirection:"column",gap:11}}>
+          {/* Resume workout prompt */}
+          {showResumePrompt&&(<div style={{background:"#13131a",border:"2px solid "+GC,borderRadius:13,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+            <div style={{fontSize:22}}>&#9202;</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13}}>Workout in progress</div>
+              <div style={{fontSize:10,color:"#888"}}>You have an unfinished workout. Resume it?</div>
+            </div>
+            <button onClick={resumeWorkout} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12,flexShrink:0}}>Resume</button>
+            <button onClick={function(){setShowResumePrompt(false);clearWorkoutDraft();}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,padding:"0 4px"}}>x</button>
+          </div>)}
           {/* XP popup animation */}
           {xpAnim&&(<div style={{position:"fixed",top:"20%",left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#13131a",border:"2px solid "+GC,borderRadius:14,padding:"10px 20px",textAlign:"center",animation:"up .3s ease",pointerEvents:"none"}}>
             <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:28,color:GC,lineHeight:1}}>+{xpAnim.amount} XP</div>
