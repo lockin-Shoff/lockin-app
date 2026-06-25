@@ -218,107 +218,225 @@ function MuscleDiagram({exerciseName,color}){
     var t=setInterval(function(){setPulsePhase(function(p){return(p+1)%60;});},40);
     return function(){clearInterval(t);};
   },[exerciseName]);
-  var pulse=0.15*Math.sin((pulsePhase/60)*2*Math.PI);
-  var sk1="#c4845a",sk2="#b87348",sk3="#d4956a";
-  var fb=[
-    {d:"M16,28 Q20,25 27,24 Q34,25 38,28 L39,52 Q35,56 27,57 Q19,56 15,52 Z",f:sk2},
-    {d:"M17,30 Q23,28 27,29 Q31,28 37,30 L36,42 Q31,44 27,44 Q23,44 18,42 Z",f:sk1},
-    {d:"M20,52 Q27,50 34,52 L33,72 Q27,74 21,72 Z",f:sk1},
-    {d:"M5,28 Q10,25 15,28 L14,50 Q9,53 4,50 Z",f:sk2},
-    {d:"M39,28 Q44,25 49,28 L48,50 Q43,53 38,50 Z",f:sk2},
-    {d:"M3,49 Q7,47 13,50 L12,78 Q7,80 2,77 Z",f:sk3},
-    {d:"M39,49 Q45,47 49,50 L48,78 Q43,80 38,77 Z",f:sk3},
-    {d:"M2,76 Q7,74 12,76 L11,88 Q6,90 1,87 Z",f:sk3},
-    {d:"M38,76 Q43,74 48,76 L47,88 Q42,90 37,87 Z",f:sk3},
-    {d:"M15,55 Q27,53 39,55 L38,70 Q27,72 16,70 Z",f:sk2},
-    {d:"M14,68 Q20,66 26,68 L25,108 Q19,111 13,108 Z",f:sk2},
-    {d:"M28,68 Q34,66 40,68 L39,108 Q33,111 27,108 Z",f:sk2},
-    {d:"M14,104 Q20,102 26,104 L25,116 Q19,118 13,116 Z",f:sk3},
-    {d:"M28,104 Q34,102 40,104 L39,116 Q33,118 27,116 Z",f:sk3},
-    {d:"M13,114 Q19,112 25,114 L24,142 Q18,144 12,142 Z",f:sk2},
-    {d:"M27,114 Q33,112 39,114 L38,142 Q32,144 26,142 Z",f:sk2},
-    {d:"M19,2 Q27,-1 35,2 Q39,6 39,13 Q39,21 27,23 Q15,21 15,13 Q15,6 19,2 Z",f:sk1},
-    {d:"M22,22 Q27,21 32,22 L31,28 Q27,29 23,28 Z",f:sk2},
+  var pulse=0.18*Math.sin((pulsePhase/60)*2*Math.PI);
+
+  // Skin tones
+  var sk1="#c4845a",sk2="#b87348",sk3="#a86030",sk4="#d4956a",sk5="#e8a878";
+
+  // ── FRONT BODY ── realistic anatomical paths (54x155 viewBox)
+  var FRONT_BODY=[
+    // Head
+    {d:"M19,1 Q27,-2 35,1 Q41,6 41,14 Q41,23 27,25 Q13,23 13,14 Q13,6 19,1 Z",f:sk4},
+    {d:"M20,3 Q27,0 34,3 Q39,7 39,13 Q39,20 27,22 Q15,20 15,13 Q15,7 20,3 Z",f:sk1},
+    // Neck
+    {d:"M22,23 Q27,22 32,23 L33,29 Q30,31 27,31 Q24,31 21,29 Z",f:sk2},
+    // Traps visible from front
+    {d:"M10,29 Q18,25 27,27 Q36,25 44,29 L42,35 Q35,32 27,33 Q19,32 12,35 Z",f:sk2},
+    // Upper chest / clavicle area
+    {d:"M12,33 Q27,29 42,33 L41,42 Q35,39 27,40 Q19,39 13,42 Z",f:sk1},
+    // Pec major left
+    {d:"M12,38 Q20,36 27,39 L26,54 Q20,57 13,54 Q9,50 10,44 Z",f:sk2},
+    // Pec major right
+    {d:"M27,39 Q34,36 42,38 L44,44 Q45,50 41,54 Q34,57 28,54 Z",f:sk2},
+    // Pec detail left
+    {d:"M13,42 Q20,40 26,43 L25,52 Q19,54 14,51 Z",f:sk1},
+    // Pec detail right
+    {d:"M28,43 Q34,40 41,42 L40,51 Q35,54 29,52 Z",f:sk1},
+    // Serratus left
+    {d:"M9,45 Q13,43 14,50 L13,60 Q8,58 7,52 Z",f:sk3},
+    {d:"M9,52 Q13,50 14,57 L12,63 Q7,61 7,56 Z",f:sk3},
+    // Serratus right
+    {d:"M45,45 Q41,43 40,50 L41,60 Q46,58 47,52 Z",f:sk3},
+    {d:"M45,52 Q41,50 40,57 L42,63 Q47,61 47,56 Z",f:sk3},
+    // Abs - rectus abdominis (6 pack)
+    {d:"M20,53 Q24,51 27,52 L27,60 Q24,61 20,60 Z",f:sk2},
+    {d:"M27,52 Q30,51 34,53 L34,60 Q30,61 27,60 Z",f:sk2},
+    {d:"M20,60 Q24,59 27,60 L27,68 Q24,69 20,68 Z",f:sk1},
+    {d:"M27,60 Q30,59 34,60 L34,68 Q30,69 27,68 Z",f:sk1},
+    {d:"M20,68 Q24,67 27,68 L27,76 Q24,77 20,76 Z",f:sk2},
+    {d:"M27,68 Q30,67 34,68 L34,76 Q30,77 27,76 Z",f:sk2},
+    // Linea alba
+    {d:"M26,52 L28,52 L28,77 L26,77 Z",f:sk3},
+    // Obliques left
+    {d:"M10,55 Q15,52 20,55 L19,74 Q13,77 9,72 Z",f:sk2},
+    // Obliques right
+    {d:"M34,55 Q39,52 44,55 L45,72 Q41,77 35,74 Z",f:sk2},
+    // Hip flexors / lower abs
+    {d:"M18,74 Q22,72 27,73 L26,82 Q22,84 17,81 Z",f:sk1},
+    {d:"M27,73 Q32,72 36,74 L37,81 Q32,84 28,82 Z",f:sk1},
+    // Left arm - deltoid
+    {d:"M5,30 Q11,27 15,32 L14,43 Q9,46 4,42 Z",f:sk2},
+    // Right arm - deltoid
+    {d:"M39,32 Q43,27 49,30 L50,42 Q45,46 40,43 Z",f:sk2},
+    // Left arm - bicep
+    {d:"M3,42 Q8,40 12,43 L11,60 Q7,63 2,59 Z",f:sk1},
+    // Right arm - bicep
+    {d:"M42,43 Q46,40 51,42 L52,59 Q47,63 43,60 Z",f:sk1},
+    // Left forearm
+    {d:"M2,59 Q7,57 11,60 L10,80 Q6,83 1,79 Z",f:sk2},
+    // Right forearm
+    {d:"M43,60 Q47,57 52,59 L53,79 Q48,83 44,80 Z",f:sk2},
+    // Left hand
+    {d:"M1,79 Q5,77 10,80 L9,92 Q5,94 0,91 Z",f:sk4},
+    // Right hand
+    {d:"M44,80 Q49,77 53,79 L54,91 Q49,94 45,92 Z",f:sk4},
+    // Left quad
+    {d:"M15,82 Q21,79 27,81 L26,112 Q20,115 13,111 Z",f:sk2},
+    // Right quad
+    {d:"M27,81 Q33,79 39,82 L41,111 Q34,115 28,112 Z",f:sk2},
+    // Left quad inner
+    {d:"M20,85 Q25,83 27,86 L26,108 Q23,110 19,108 Z",f:sk1},
+    // Right quad inner
+    {d:"M27,86 Q29,83 34,85 L35,108 Q31,110 28,108 Z",f:sk1},
+    // Left knee
+    {d:"M14,110 Q21,108 27,110 L26,118 Q19,120 13,117 Z",f:sk3},
+    // Right knee
+    {d:"M27,110 Q33,108 40,110 L41,117 Q35,120 28,118 Z",f:sk3},
+    // Left calf
+    {d:"M13,118 Q20,116 26,118 L25,142 Q18,145 11,140 Z",f:sk2},
+    // Right calf
+    {d:"M28,118 Q34,116 41,118 L43,140 Q37,145 29,142 Z",f:sk2},
+    // Left ankle/foot
+    {d:"M11,140 Q18,138 25,141 L24,152 Q17,154 10,151 Z",f:sk4},
+    // Right ankle/foot
+    {d:"M29,141 Q36,138 43,140 L44,151 Q37,154 30,152 Z",f:sk4},
   ];
-  var bb=[
-    {d:"M66,28 Q70,25 77,24 Q84,25 88,28 L89,52 Q85,56 77,57 Q69,56 65,52 Z",f:sk2},
-    {d:"M67,30 Q73,27 77,28 Q81,27 87,30 L86,50 Q81,52 77,52 Q73,52 68,50 Z",f:sk1},
-    {d:"M70,52 Q77,50 84,52 L83,72 Q77,74 71,72 Z",f:sk1},
-    {d:"M55,28 Q60,25 65,28 L64,50 Q59,53 54,50 Z",f:sk2},
-    {d:"M89,28 Q94,25 99,28 L98,50 Q93,53 88,50 Z",f:sk2},
-    {d:"M53,49 Q57,47 63,50 L62,78 Q57,80 52,77 Z",f:sk3},
-    {d:"M89,49 Q95,47 99,50 L98,78 Q93,80 88,77 Z",f:sk3},
-    {d:"M52,76 Q57,74 62,76 L61,88 Q56,90 51,87 Z",f:sk3},
-    {d:"M88,76 Q93,74 98,76 L97,88 Q92,90 87,87 Z",f:sk3},
-    {d:"M65,55 Q77,53 89,55 L88,70 Q77,72 66,70 Z",f:sk2},
-    {d:"M64,68 Q70,66 76,68 L75,108 Q69,111 63,108 Z",f:sk2},
-    {d:"M78,68 Q84,66 90,68 L89,108 Q83,111 77,108 Z",f:sk2},
-    {d:"M64,104 Q70,102 76,104 L75,116 Q69,118 63,116 Z",f:sk3},
-    {d:"M78,104 Q84,102 90,104 L89,116 Q83,118 77,116 Z",f:sk3},
-    {d:"M63,114 Q69,112 75,114 L74,142 Q68,144 62,142 Z",f:sk2},
-    {d:"M77,114 Q83,112 89,114 L88,142 Q82,144 76,142 Z",f:sk2},
-    {d:"M69,2 Q77,-1 85,2 Q89,6 89,13 Q89,21 77,23 Q65,21 65,13 Q65,6 69,2 Z",f:sk1},
-    {d:"M72,22 Q77,21 82,22 L81,28 Q77,29 73,28 Z",f:sk2},
+
+  // ── BACK BODY ── (offset x+54)
+  var BACK_BODY=[
+    // Head
+    {d:"M73,1 Q81,-2 89,1 Q95,6 95,14 Q95,23 81,25 Q67,23 67,14 Q67,6 73,1 Z",f:sk4},
+    {d:"M74,3 Q81,0 88,3 Q93,7 93,13 Q93,20 81,22 Q69,20 69,13 Q69,7 74,3 Z",f:sk1},
+    // Neck
+    {d:"M76,23 Q81,22 86,23 L87,29 Q84,31 81,31 Q78,31 75,29 Z",f:sk2},
+    // Upper traps
+    {d:"M62,29 Q71,24 81,26 Q91,24 100,29 L98,36 Q90,32 81,33 Q72,32 66,36 Z",f:sk2},
+    // Trap mid
+    {d:"M65,35 Q73,32 81,33 Q89,32 97,35 L96,50 Q88,53 81,54 Q74,53 66,50 Z",f:sk1},
+    // Rhomboids
+    {d:"M69,36 Q75,33 81,34 Q87,33 93,36 L92,50 Q87,52 81,53 Q75,52 70,50 Z",f:sk2},
+    // Lat left
+    {d:"M62,40 Q68,36 72,42 L70,72 Q63,76 57,70 Z",f:sk2},
+    // Lat right
+    {d:"M90,42 Q94,36 100,40 L107,70 Q101,76 94,72 Z",f:sk2},
+    // Lat detail left
+    {d:"M63,44 Q68,40 72,44 L70,68 Q65,70 61,66 Z",f:sk1},
+    // Lat detail right
+    {d:"M90,44 Q94,40 99,44 L101,66 Q97,70 92,68 Z",f:sk1},
+    // Teres major/minor left
+    {d:"M62,36 Q66,32 70,37 L69,48 Q64,51 60,47 Z",f:sk3},
+    // Teres major/minor right
+    {d:"M92,37 Q96,32 100,36 L102,47 Q98,51 93,48 Z",f:sk3},
+    // Erector spinae
+    {d:"M77,35 Q79,33 81,35 L80,72 Q78,73 76,72 Z",f:sk3},
+    {d:"M81,35 Q83,33 85,35 L84,72 Q82,73 81,72 Z",f:sk3},
+    // Lower back
+    {d:"M68,68 Q74,65 81,66 Q88,65 94,68 L93,78 Q87,81 81,82 Q75,81 69,78 Z",f:sk2},
+    // Glutes
+    {d:"M65,78 Q73,73 81,75 L80,98 Q72,102 63,97 Z",f:sk2},
+    {d:"M81,75 Q89,73 97,78 L99,97 Q90,102 82,98 Z",f:sk2},
+    // Glute detail
+    {d:"M67,80 Q74,76 81,78 L80,96 Q73,99 66,95 Z",f:sk1},
+    {d:"M81,78 Q88,76 95,80 L97,95 Q90,99 82,96 Z",f:sk1},
+    // Left arm back - deltoid
+    {d:"M57,30 Q63,27 67,33 L66,44 Q61,47 56,43 Z",f:sk2},
+    // Right arm back - deltoid
+    {d:"M95,33 Q99,27 105,30 L106,43 Q101,47 96,44 Z",f:sk2},
+    // Left tricep
+    {d:"M55,43 Q60,41 65,44 L64,63 Q59,66 54,62 Z",f:sk1},
+    // Right tricep
+    {d:"M97,44 Q102,41 107,43 L108,62 Q103,66 98,63 Z",f:sk1},
+    // Left forearm back
+    {d:"M54,62 Q59,60 64,63 L63,82 Q58,85 53,81 Z",f:sk2},
+    // Right forearm back
+    {d:"M98,63 Q103,60 108,62 L109,81 Q104,85 99,82 Z",f:sk2},
+    // Left hand
+    {d:"M53,81 Q57,79 63,82 L62,93 Q57,95 52,92 Z",f:sk4},
+    // Right hand
+    {d:"M99,82 Q105,79 109,81 L110,92 Q105,95 100,93 Z",f:sk4},
+    // Hamstrings left
+    {d:"M65,98 Q73,95 81,97 L80,128 Q72,131 63,126 Z",f:sk2},
+    // Hamstrings right
+    {d:"M81,97 Q89,95 97,98 L99,126 Q90,131 82,128 Z",f:sk2},
+    // Ham detail left
+    {d:"M67,100 Q74,97 80,99 L79,124 Q73,126 66,123 Z",f:sk1},
+    // Ham detail right
+    {d:"M82,99 Q88,97 95,100 L97,123 Q90,126 83,124 Z",f:sk1},
+    // Knee back left
+    {d:"M64,126 Q72,124 80,126 L79,134 Q71,136 63,133 Z",f:sk3},
+    // Knee back right
+    {d:"M82,126 Q90,124 98,126 L99,133 Q91,136 83,134 Z",f:sk3},
+    // Calf left
+    {d:"M63,134 Q71,132 79,134 L78,150 Q70,153 61,148 Z",f:sk2},
+    // Calf right
+    {d:"M83,134 Q91,132 99,134 L101,148 Q92,153 84,150 Z",f:sk2},
+    // Ankle/foot back
+    {d:"M61,148 Q70,146 78,149 L77,155 Q69,157 60,154 Z",f:sk4},
+    {d:"M84,149 Q92,146 101,148 L102,154 Q93,157 85,155 Z",f:sk4},
   ];
+
+  // Muscle overlay paths - FRONT (more anatomically accurate shapes)
   var AF={
-    "Pec Major (Sternal)":"M18,32 Q27,29 36,32 L35,44 Q27,47 19,44 Z",
-    "Pec Major (Clavicular)":"M18,29 Q27,27 36,29 L35,35 Q27,36 19,35 Z",
-    "Pec Minor":"M21,34 Q27,32 33,34 L32,43 Q27,44 22,43 Z",
-    "Serratus Anterior":"M15,38 Q18,36 20,40 L18,52 Q15,53 13,50 Z M37,38 Q40,36 39,40 L41,52 Q39,53 37,50 Z",
-    "Ant Deltoid":"M7,28 Q12,24 16,28 L15,40 Q10,43 6,39 Z M38,28 Q43,24 47,28 L46,40 Q41,43 37,39 Z",
-    "Mid Deltoid":"M4,36 Q8,32 12,36 L11,48 Q6,51 3,47 Z M42,36 Q46,32 50,36 L49,48 Q44,51 41,47 Z",
-    "Bicep Long Head":"M5,42 Q8,40 11,42 L10,58 Q7,60 4,58 Z M43,42 Q46,40 49,42 L48,58 Q45,60 42,58 Z",
-    "Bicep Short Head":"M8,42 Q11,40 13,43 L12,58 Q9,60 7,58 Z M41,42 Q44,40 46,43 L45,58 Q42,60 40,58 Z",
-    "Brachialis":"M5,56 Q9,54 12,57 L11,65 Q8,67 5,64 Z M42,56 Q46,54 49,57 L48,65 Q45,67 42,64 Z",
-    "Brachioradialis":"M4,63 Q8,61 11,64 L10,78 Q7,80 3,77 Z M43,63 Q47,61 50,64 L49,78 Q46,80 42,77 Z",
-    "Flex Carpi Radialis":"M4,77 Q7,75 10,77 L9,87 Q6,88 3,86 Z M44,77 Q47,75 50,77 L49,87 Q46,88 43,86 Z",
-    "Flex Carpi Ulnaris":"M2,77 Q5,75 7,78 L6,87 Q3,88 1,86 Z M47,77 Q50,75 52,78 L51,87 Q48,88 46,86 Z",
-    "Palmaris Longus":"M5,78 Q7,76 9,78 L8,87 Q6,88 5,87 Z M45,78 Q47,76 49,78 L48,87 Q46,88 45,87 Z",
-    "Pronator Teres":"M6,62 Q10,60 13,63 L12,70 Q9,72 6,69 Z M41,62 Q45,60 48,63 L47,70 Q44,72 41,69 Z",
-    "Flex Digitorum":"M3,86 Q6,84 10,86 L9,94 Q6,96 2,93 Z M44,86 Q47,84 51,86 L50,94 Q47,96 43,93 Z",
-    "Rectus Abdominis":"M21,52 Q27,50 33,52 L32,70 Q27,72 22,70 Z",
-    "Obliques":"M14,52 Q19,50 21,54 L20,70 Q16,72 13,68 Z M33,52 Q38,50 40,54 L39,70 Q36,72 34,68 Z",
-    "Transverse Abdominis":"M20,60 Q27,58 34,60 L33,70 Q27,71 21,70 Z",
-    "Hip Flexors":"M18,68 Q27,66 36,68 L35,76 Q27,78 19,76 Z",
-    "Quad (Rectus Femoris)":"M20,70 Q24,68 28,70 L27,106 Q23,108 19,106 Z",
-    "Quad (Vastus Lat)":"M15,72 Q20,70 23,74 L22,108 Q17,111 13,108 Z M31,72 Q36,70 39,74 L38,108 Q33,111 29,108 Z",
-    "Quad (Vastus Med)":"M23,88 Q27,86 31,88 L30,110 Q26,112 22,110 Z",
-    "Quad (Vastus Int)":"M21,72 Q25,70 29,72 L28,106 Q24,108 20,106 Z",
-    "Adductor Magnus":"M22,70 Q27,68 32,70 L31,102 Q27,104 23,102 Z",
-    "Gastrocnemius (Med)":"M19,114 Q23,112 27,114 L26,132 Q22,134 18,131 Z M27,114 Q31,112 35,114 L34,132 Q30,134 26,131 Z",
-    "Gastrocnemius (Lat)":"M14,116 Q18,114 21,118 L20,134 Q15,136 12,133 Z M33,116 Q37,114 40,118 L39,134 Q34,136 31,133 Z",
-    "Soleus":"M16,128 Q22,126 32,126 L31,142 Q22,144 15,142 Z",
-    "Tibialis Anterior":"M13,114 Q16,112 19,116 L18,132 Q14,134 12,131 Z M35,114 Q38,112 41,116 L40,132 Q36,134 34,131 Z",
+    "Pec Major (Sternal)":     "M13,42 Q20,39 27,41 L26,54 Q19,57 13,53 Z M27,41 Q34,39 41,42 L41,53 Q35,57 28,54 Z",
+    "Pec Major (Clavicular)":  "M13,33 Q20,30 27,32 L26,42 Q19,43 13,41 Z M27,32 Q34,30 41,33 L41,41 Q35,43 28,42 Z",
+    "Pec Minor":               "M16,36 Q22,33 27,35 L26,46 Q21,47 16,44 Z M27,35 Q32,33 38,36 L38,44 Q33,47 28,46 Z",
+    "Serratus Anterior":       "M9,44 Q13,42 15,47 L14,54 Q10,55 8,51 Z M39,47 Q41,42 45,44 L46,51 Q44,55 40,54 Z M9,53 Q12,51 14,56 L13,62 Q9,63 7,58 Z M40,56 Q42,51 45,53 L46,58 Q44,63 40,62 Z",
+    "Ant Deltoid":             "M5,30 Q11,27 15,33 L14,44 Q9,47 4,43 Z M39,33 Q43,27 49,30 L50,43 Q45,47 40,44 Z",
+    "Mid Deltoid":             "M2,40 Q7,37 11,41 L10,54 Q5,57 1,53 Z M43,41 Q47,37 52,40 L53,53 Q49,57 44,54 Z",
+    "Bicep Long Head":         "M3,42 Q7,40 10,43 L9,58 Q5,61 2,57 Z M44,43 Q47,40 51,42 L52,57 Q49,61 45,58 Z",
+    "Bicep Short Head":        "M7,42 Q10,40 13,43 L12,58 Q9,61 6,58 Z M41,43 Q44,40 47,42 L46,58 Q43,61 40,58 Z",
+    "Brachialis":              "M3,57 Q7,55 11,58 L10,66 Q7,68 3,65 Z M43,58 Q47,55 51,57 L52,65 Q48,68 44,66 Z",
+    "Brachioradialis":         "M2,64 Q6,62 10,65 L9,80 Q5,82 1,78 Z M44,65 Q48,62 52,64 L53,78 Q49,82 45,80 Z",
+    "Flex Carpi Radialis":     "M2,78 Q5,76 9,78 L8,88 Q5,90 1,87 Z M45,78 Q49,76 52,78 L53,87 Q49,90 46,88 Z",
+    "Flex Carpi Ulnaris":      "M1,76 Q4,74 6,77 L5,87 Q3,88 0,86 Z M48,77 Q50,74 53,76 L54,86 Q51,88 49,87 Z",
+    "Pronator Teres":          "M5,60 Q9,58 12,62 L11,69 Q8,71 5,68 Z M42,62 Q45,58 49,60 L49,68 Q46,71 43,69 Z",
+    "Flex Digitorum":          "M1,86 Q5,84 9,87 L8,93 Q5,95 1,92 Z M45,87 Q49,84 53,86 L54,92 Q50,95 46,93 Z",
+    "Rectus Abdominis":        "M20,53 Q24,51 27,52 L27,76 Q23,77 19,76 Z M27,52 Q30,51 34,53 L35,76 Q31,77 27,76 Z",
+    "Obliques":                "M10,55 Q15,52 20,55 L19,74 Q13,77 9,72 Z M34,55 Q39,52 44,55 L45,72 Q41,77 35,74 Z",
+    "Transverse Abdominis":    "M18,62 Q22,60 27,61 L27,74 Q23,75 18,74 Z M27,61 Q32,60 36,62 L36,74 Q31,75 27,74 Z",
+    "Hip Flexors":             "M18,74 Q22,72 27,73 L26,82 Q21,84 17,80 Z M27,73 Q32,72 36,74 L37,80 Q33,84 28,82 Z",
+    "Quad (Rectus Femoris)":   "M20,82 Q24,79 28,81 L27,110 Q23,112 19,109 Z",
+    "Quad (Vastus Lat)":       "M14,83 Q19,80 22,84 L21,112 Q16,115 12,111 Z M32,84 Q35,80 40,83 L42,111 Q38,115 33,112 Z",
+    "Quad (Vastus Med)":       "M22,90 Q26,87 30,90 L29,110 Q25,113 21,110 Z",
+    "Quad (Vastus Int)":       "M20,82 Q24,79 28,82 L27,108 Q23,110 19,108 Z",
+    "Adductor Magnus":         "M21,82 Q25,80 27,82 L26,108 Q23,110 20,108 Z M27,82 Q29,80 33,82 L34,108 Q31,110 28,108 Z",
+    "Gastrocnemius (Med)":     "M14,118 Q20,116 26,118 L25,140 Q19,143 13,139 Z M28,118 Q34,116 40,118 L41,139 Q35,143 29,140 Z",
+    "Gastrocnemius (Lat)":     "M11,120 Q16,118 19,122 L18,140 Q13,143 9,139 Z M35,122 Q38,118 43,120 L45,139 Q41,143 36,140 Z",
+    "Soleus":                  "M12,134 Q20,132 28,132 L29,148 Q20,150 11,148 Z M28,132 Q36,132 42,134 L43,148 Q35,150 27,148 Z",
+    "Tibialis Anterior":       "M11,118 Q15,116 18,120 L17,138 Q13,140 10,137 Z M36,120 Q39,116 43,118 L44,137 Q41,140 37,138 Z",
   };
+
+  // Muscle overlay paths - BACK (offset x+54)
   var AB={
-    "Trap (Upper)":"M62,26 Q77,22 92,26 L91,36 Q77,38 63,36 Z",
-    "Trap (Mid)":"M63,36 Q77,38 91,36 L90,50 Q77,52 64,50 Z",
-    "Lower Trap":"M65,50 Q77,52 89,50 L88,60 Q77,62 66,60 Z",
-    "Rhomboids":"M67,34 Q77,30 87,34 L86,52 Q77,54 68,52 Z",
-    "Lat Dorsi":"M60,40 Q66,35 70,42 L68,70 Q62,73 57,67 Z M94,40 Q88,35 84,42 L86,70 Q92,73 97,67 Z",
-    "Teres Major":"M60,38 Q65,33 69,38 L68,50 Q63,52 58,48 Z M94,38 Q89,33 85,38 L86,50 Q91,52 96,48 Z",
-    "Teres Minor":"M60,32 Q64,28 68,33 L67,40 Q62,43 59,40 Z M94,32 Q90,28 86,33 L87,40 Q92,43 95,40 Z",
-    "Infraspinatus":"M64,30 Q77,26 90,30 L89,43 Q77,45 65,43 Z",
-    "Erector Spinae":"M73,34 Q75,32 77,34 L76,70 Q74,72 72,70 Z M79,34 Q81,32 83,34 L82,70 Q80,72 78,70 Z",
-    "Post Deltoid":"M56,30 Q61,25 65,32 L64,44 Q58,47 54,43 Z M98,30 Q93,25 89,32 L90,44 Q96,47 100,43 Z",
-    "Glute Max":"M63,72 Q77,68 91,72 L90,94 Q77,98 64,94 Z",
-    "Glute Med":"M60,62 Q70,58 77,62 L76,76 Q68,79 59,75 Z M94,62 Q84,58 77,62 L78,76 Q86,79 95,75 Z",
-    "Glute Min":"M63,66 Q70,62 77,66 L76,76 Q69,79 62,75 Z M91,66 Q84,62 77,66 L78,76 Q85,79 92,75 Z",
-    "TFL":"M60,68 Q65,63 69,70 L68,83 Q62,86 58,81 Z M94,68 Q89,63 85,70 L86,83 Q92,86 96,81 Z",
-    "Bicep Femoris (Long)":"M79,94 Q84,91 88,94 L87,122 Q83,125 79,122 Z M66,94 Q62,91 58,94 L59,122 Q63,125 67,122 Z",
-    "Bicep Femoris (Short)":"M79,108 Q83,106 87,108 L86,124 Q83,127 79,124 Z M65,108 Q61,106 57,108 L58,124 Q62,127 66,124 Z",
-    "Semimembranosus":"M73,94 Q77,91 81,94 L80,122 Q76,125 72,122 Z",
-    "Semitendinosus":"M68,94 Q72,91 76,94 L75,122 Q71,125 67,122 Z",
-    "Tricep Long Head":"M55,42 Q59,39 62,43 L61,63 Q57,65 54,62 Z M99,42 Q95,39 92,43 L93,63 Q97,65 100,62 Z",
-    "Tricep Lateral Head":"M52,44 Q56,41 59,45 L58,63 Q54,65 51,62 Z M102,44 Q98,41 95,45 L96,63 Q100,65 103,62 Z",
-    "Tricep Medial Head":"M55,52 Q58,50 61,53 L60,63 Q57,64 54,62 Z M99,52 Q96,50 93,53 L94,63 Q97,64 100,62 Z",
-    "Supraspinatus":"M65,26 Q77,22 89,26 L88,34 Q77,36 66,34 Z",
-    "Levator Scapulae":"M65,22 Q68,20 71,24 L70,34 Q67,36 64,33 Z M89,22 Q86,20 83,24 L84,34 Q87,36 90,33 Z",
-    "Ext Carpi Ulnaris":"M51,60 Q55,57 58,61 L57,76 Q53,78 50,75 Z M103,60 Q99,57 96,61 L97,76 Q101,78 104,75 Z",
-    "Gastrocnemius (Med)_back":"M73,124 Q76,122 80,124 L79,144 Q75,147 72,144 Z",
-    "Gastrocnemius (Lat)_back":"M67,124 Q71,122 74,124 L73,144 Q69,147 66,144 Z M80,124 Q84,122 87,124 L86,144 Q82,147 79,144 Z",
-    "Soleus_back":"M67,138 Q77,136 87,136 L86,150 Q77,152 68,150 Z",
+    "Trap (Upper)":            "M65,29 Q73,24 81,26 Q89,24 97,29 L96,37 Q88,33 81,34 Q74,33 66,37 Z",
+    "Trap (Mid)":              "M66,36 Q74,33 81,34 Q88,33 96,36 L95,50 Q87,53 81,54 Q75,53 67,50 Z",
+    "Lower Trap":              "M67,50 Q74,48 81,49 Q88,48 95,50 L94,60 Q87,63 81,64 Q75,63 68,60 Z",
+    "Rhomboids":               "M70,36 Q76,33 81,34 Q86,33 92,36 L91,50 Q86,52 81,53 Q76,52 71,50 Z",
+    "Lat Dorsi":               "M62,40 Q68,36 72,43 L70,70 Q63,74 57,68 Z M90,43 Q94,36 100,40 L105,68 Q99,74 92,70 Z",
+    "Teres Major":             "M62,36 Q66,32 70,38 L69,50 Q64,53 59,48 Z M92,38 Q96,32 100,36 L103,48 Q98,53 93,50 Z",
+    "Teres Minor":             "M62,32 Q66,28 69,34 L68,42 Q63,44 60,41 Z M93,34 Q96,28 100,32 L102,41 Q99,44 94,42 Z",
+    "Infraspinatus":           "M66,30 Q73,26 81,27 Q89,26 96,30 L95,44 Q87,47 81,48 Q75,47 67,44 Z",
+    "Erector Spinae":          "M77,35 Q79,33 81,35 L80,72 Q78,74 76,72 Z M81,35 Q83,33 85,35 L84,72 Q82,74 81,72 Z",
+    "Post Deltoid":            "M57,30 Q62,26 66,33 L65,45 Q59,48 55,44 Z M96,33 Q100,26 105,30 L107,44 Q103,48 97,45 Z",
+    "Glute Max":               "M65,78 Q73,73 81,75 L80,98 Q71,102 63,97 Z M81,75 Q89,73 97,78 L99,97 Q91,102 82,98 Z",
+    "Glute Med":               "M62,64 Q70,60 78,63 L77,78 Q69,81 61,77 Z M84,63 Q92,60 100,64 L101,77 Q93,81 85,78 Z",
+    "Glute Min":               "M64,67 Q71,63 78,66 L77,77 Q70,79 63,76 Z M84,66 Q91,63 98,67 L99,76 Q92,79 85,77 Z",
+    "TFL":                     "M62,66 Q66,62 69,68 L68,82 Q63,85 60,80 Z M93,68 Q96,62 100,66 L102,80 Q99,85 94,82 Z",
+    "Bicep Femoris (Long)":    "M65,98 Q71,95 77,98 L76,126 Q70,129 63,125 Z M85,98 Q91,95 97,98 L99,125 Q93,129 86,126 Z",
+    "Bicep Femoris (Short)":   "M66,112 Q71,109 76,112 L75,128 Q70,131 65,128 Z M86,112 Q91,109 96,112 L97,128 Q92,131 87,128 Z",
+    "Semimembranosus":         "M74,98 Q78,95 82,98 L81,126 Q77,129 73,126 Z",
+    "Semitendinosus":          "M69,98 Q73,95 77,98 L76,126 Q72,129 68,126 Z",
+    "Tricep Long Head":        "M56,43 Q60,40 64,44 L63,63 Q58,66 54,62 Z M98,44 Q102,40 106,43 L107,62 Q103,66 99,63 Z",
+    "Tricep Lateral Head":     "M53,45 Q57,42 61,46 L60,63 Q55,66 52,62 Z M101,46 Q105,42 109,45 L110,62 Q106,66 102,63 Z",
+    "Tricep Medial Head":      "M56,52 Q59,50 62,53 L61,63 Q58,65 55,62 Z M100,53 Q103,50 106,52 L107,62 Q104,65 101,63 Z",
+    "Supraspinatus":           "M67,27 Q74,23 81,24 Q88,23 95,27 L94,35 Q87,31 81,32 Q75,31 68,35 Z",
+    "Levator Scapulae":        "M66,24 Q69,21 72,26 L71,35 Q68,37 65,34 Z M90,26 Q93,21 96,24 L97,34 Q94,37 91,35 Z",
+    "Ext Carpi Ulnaris":       "M52,61 Q56,58 60,62 L59,77 Q55,79 51,76 Z M102,62 Q106,58 110,61 L111,76 Q107,79 103,77 Z",
+    "Gastrocnemius (Med)_back":"M74,134 Q78,132 82,134 L81,150 Q77,153 73,150 Z",
+    "Gastrocnemius (Lat)_back":"M68,134 Q72,132 75,134 L74,150 Q70,153 67,150 Z M83,134 Q86,132 90,134 L89,150 Q86,153 82,150 Z",
+    "Soleus_back":             "M67,144 Q74,142 81,143 Q88,142 95,144 L94,153 Q87,155 81,156 Q75,155 68,153 Z",
   };
+
   var rm=function(isBack){
     return muscles.map(function(m){
       var isBM=BACK_VIEW_MUSCLES.has(m);
@@ -327,202 +445,69 @@ function MuscleDiagram({exerciseName,color}){
       var pd=isBack?(AB[m]||AB[m+"_back"]):(AF[m]);
       if(!pd)return null;
       var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
-      var op=(0.6+(pct/100)*0.35)+(isPrimary?pulse*0.2:0);
-      var gs=isPrimary?{filter:"blur(3px)"}:{};
-      return <g key={m}>{isPrimary&&<path d={pd} fill={col} opacity={0.2+Math.max(0,pulse)*0.3} style={gs}/>}<path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth="0.3" strokeOpacity="0.3"/>{isPrimary&&<path d={pd} fill="url(#spec)" opacity="0.2"/>}</g>;
+      var op=0.55+(pct/100)*0.4+(isPrimary?pulse*0.25:0);
+      var glowColor=isPrimary?col:"none";
+      return(<g key={m}>
+        {isPrimary&&<path d={pd} fill={col} opacity={0.25+Math.abs(pulse)*0.3} style={{filter:"blur(4px)"}}/>}
+        <path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth={isPrimary?"0.5":"0"} strokeOpacity="0.4"/>
+        {isPrimary&&<path d={pd} fill="none" stroke={col} strokeWidth="0.8" strokeOpacity="0.7"/>}
+      </g>);
     });
   };
+
   return(
-    <div style={{background:"linear-gradient(160deg,#0e0e18,#080810)",borderRadius:16,padding:"16px",marginBottom:10,border:"1px solid #1e1e2a",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
-      <div style={{fontSize:9,color:"#555",letterSpacing:1.5,marginBottom:12,textAlign:"center"}}>MUSCLE ACTIVATION BREAKDOWN</div>
-      <div style={{display:"flex",justifyContent:"center",gap:24,marginBottom:14}}>
-        <div style={{textAlign:"center"}}>
-          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>FRONT</div>
-          <svg viewBox="0 0 54 155" width="80" height="225" style={{overflow:"visible",filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.8))"}}>
-            <defs>
-              <linearGradient id="bgl" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.12"/><stop offset="100%" stopColor="#000" stopOpacity="0.2"/></linearGradient>
-              <linearGradient id="spec" x1="0%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.4"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></linearGradient>
-            </defs>
-            {fb.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.4" strokeOpacity="0.6"/>;})}
-            {fb.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bgl)" opacity="0.7"/>;})}
-            {rm(false)}
-          </svg>
-        </div>
-        <div style={{textAlign:"center"}}>
-          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>BACK</div>
-          <svg viewBox="54 0 54 155" width="80" height="225" style={{overflow:"visible",filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.8))"}}>
-            <defs>
-              <linearGradient id="bgr" x1="80%" y1="0%" x2="20%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.1"/><stop offset="100%" stopColor="#000" stopOpacity="0.25"/></linearGradient>
-            </defs>
-            {bb.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.4" strokeOpacity="0.6"/>;})}
-            {bb.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bgr)" opacity="0.7"/>;})}
-            {rm(true)}
-          </svg>
-        </div>
+    <div style={{background:"linear-gradient(160deg,#0e0e18,#070710)",borderRadius:16,padding:"16px",marginBottom:10,border:"1px solid #1e1e2a",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
+      <div style={{fontSize:9,color:"#555",letterSpacing:1.5,marginBottom:12,textAlign:"center"}}>MUSCLE ACTIVATION</div>
+      <div style={{display:"flex",justifyContent:"center",gap:20,marginBottom:14}}>
+        {[["FRONT",false],["BACK",true]].map(function(side){
+          return(<div key={side[0]} style={{textAlign:"center"}}>
+            <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>{side[0]}</div>
+            <svg viewBox={side[1]?"54 0 54 155":"0 0 54 155"} width="88" height="235" style={{overflow:"visible",filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.8))"}}>
+              <defs>
+                <linearGradient id={"bgl"+side[0]} x1={side[1]?"80%":"20%"} y1="0%" x2={side[1]?"20%":"80%"} y2="100%">
+                  <stop offset="0%" stopColor="#fff" stopOpacity="0.12"/>
+                  <stop offset="100%" stopColor="#000" stopOpacity="0.25"/>
+                </linearGradient>
+                <filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              {(side[1]?BACK_BODY:FRONT_BODY).map(function(p,i){
+                return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.35" strokeOpacity="0.5"/>;
+              })}
+              {(side[1]?BACK_BODY:FRONT_BODY).map(function(p,i){
+                return <path key={"l"+i} d={p.d} fill={"url(#bgl"+side[0]+")"} opacity="0.6"/>;
+              })}
+              {rm(side[1])}
+            </svg>
+          </div>);
+        })}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         {muscles.map(function(m){
           var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30,isSec=pct>=15&&pct<30;
-          return(<div key={m}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:9,height:9,borderRadius:3,background:col,boxShadow:isPrimary?"0 0 8px "+col+"cc":"none",flexShrink:0}}/><span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>{isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"55"}}>PRIMARY</span>}{isSec&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px"}}>SECONDARY</span>}</div><span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span></div><div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s ease",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/></div></div>);
+          return(<div key={m}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:9,height:9,borderRadius:3,background:col,boxShadow:isPrimary?"0 0 8px "+col+"cc":"none",flexShrink:0}}/>
+                <span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>
+                {isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"55"}}>PRIMARY</span>}
+                {isSec&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px"}}>SECONDARY</span>}
+              </div>
+              <span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span>
+            </div>
+            <div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden"}}>
+              <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s ease",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/>
+            </div>
+          </div>);
         })}
       </div>
-      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}><div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC,flexShrink:0}}/><div style={{fontSize:10,color:GC}}><strong>Primary:</strong> {primaryMuscles.join(" \u00b7 ")}</div></div>)}
+      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}>
+        <div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC,flexShrink:0}}/>
+        <div style={{fontSize:10,color:GC}}><strong>Primary:</strong> {primaryMuscles.join(" \u00b7 ")}</div>
+      </div>)}
     </div>
   );
 }
 
-var EX_ANIMS = {
-  "Bench Press":    {cues:["Lower bar to chest","Press explosively","Lock out at top","Control descent"],phases:["Eccentric","Concentric","Peak","Return"],color:"#ff6b35",
-    frames:['<rect x="20" y="28" width="60" height="7" rx="3" fill="#c8f53e" opacity="0.9"/><circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="55" stroke="#888" strokeWidth="3"/><line x1="50" y1="33" x2="20" y2="33" stroke="#888" strokeWidth="3"/><line x1="50" y1="33" x2="80" y2="33" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="38" y2="72" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="62" y2="72" stroke="#888" strokeWidth="3"/><text x="50" y="85" textAnchor="middle" fill="#555" fontSize="8">ARMS EXTENDED</text>','<rect x="20" y="46" width="60" height="7" rx="3" fill="#ff6b35" opacity="0.9"/><circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="55" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="20" y2="47" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="36" x2="80" y2="47" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="55" x2="38" y2="72" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="62" y2="72" stroke="#888" strokeWidth="3"/><text x="50" y="85" textAnchor="middle" fill="#c8f53e" fontSize="8">BAR TO CHEST</text>']},
-  "Push-ups":       {cues:["Hands shoulder-width","Lower chest to ground","Press back up","Core tight throughout"],phases:["Setup","Lowering","Push","Top"],color:"#ff6b35",
-    frames:['<line x1="10" y1="62" x2="90" y2="62" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="32" r="7" fill="#888"/><line x1="50" y1="39" x2="50" y2="55" stroke="#888" strokeWidth="3"/><line x1="14" y1="62" x2="50" y2="48" stroke="#888" strokeWidth="3"/><line x1="86" y1="62" x2="50" y2="48" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="40" y2="62" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="60" y2="62" stroke="#888" strokeWidth="3"/><text x="50" y="76" textAnchor="middle" fill="#555" fontSize="8">TOP</text>','<line x1="10" y1="70" x2="90" y2="70" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="50" r="7" fill="#888"/><line x1="50" y1="57" x2="50" y2="66" stroke="#888" strokeWidth="3"/><line x1="14" y1="70" x2="38" y2="59" stroke="#c8f53e" strokeWidth="3"/><line x1="86" y1="70" x2="62" y2="59" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="66" x2="38" y2="70" stroke="#888" strokeWidth="3"/><line x1="50" y1="66" x2="62" y2="70" stroke="#888" strokeWidth="3"/><text x="50" y="82" textAnchor="middle" fill="#c8f53e" fontSize="8">CHEST DOWN</text>']},
-  "Deadlift":       {cues:["Hinge at hips","Drive through heels","Lock hips at top","Neutral spine always"],phases:["Hinge","Pull","Midway","Lockout"],color:"#3eb8f5",
-    frames:['<line x1="15" y1="82" x2="85" y2="82" stroke="#2a2a3a" strokeWidth="2"/><rect x="26" y="72" width="48" height="10" rx="3" fill="#3eb8f5" opacity="0.9"/><circle cx="50" cy="28" r="7" fill="#888"/><line x1="50" y1="35" x2="44" y2="72" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="35" x2="56" y2="72" stroke="#c8f53e" strokeWidth="3"/><line x1="46" y1="50" x2="28" y2="70" stroke="#888" strokeWidth="3"/><line x1="54" y1="50" x2="72" y2="70" stroke="#888" strokeWidth="3"/><text x="50" y="93" textAnchor="middle" fill="#555" fontSize="8">SETUP</text>','<line x1="15" y1="82" x2="85" y2="82" stroke="#2a2a3a" strokeWidth="2"/><rect x="26" y="44" width="48" height="10" rx="3" fill="#3eb8f5" opacity="0.9"/><circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="54" stroke="#888" strokeWidth="3"/><line x1="36" y1="54" x2="36" y2="80" stroke="#888" strokeWidth="3"/><line x1="64" y1="54" x2="64" y2="80" stroke="#888" strokeWidth="3"/><line x1="36" y1="38" x2="74" y2="48" stroke="#c8f53e" strokeWidth="3"/><line x1="64" y1="38" x2="26" y2="48" stroke="#c8f53e" strokeWidth="3"/><text x="50" y="93" textAnchor="middle" fill="#c8f53e" fontSize="8">LOCKOUT</text>']},
-  "Pull-ups":       {cues:["Dead hang at bottom","Pull elbows to hips","Chin clears the bar","Lower under control"],phases:["Dead Hang","Initiate","Chin Up","Lower"],color:"#3eb8f5",
-    frames:['<line x1="18" y1="10" x2="82" y2="10" stroke="#3eb8f5" strokeWidth="5"/><circle cx="50" cy="32" r="7" fill="#888"/><line x1="50" y1="39" x2="50" y2="62" stroke="#888" strokeWidth="3"/><line x1="22" y1="10" x2="42" y2="30" stroke="#c8f53e" strokeWidth="3"/><line x1="78" y1="10" x2="58" y2="30" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="62" x2="38" y2="80" stroke="#888" strokeWidth="3"/><line x1="50" y1="62" x2="62" y2="80" stroke="#888" strokeWidth="3"/><text x="50" y="92" textAnchor="middle" fill="#555" fontSize="8">DEAD HANG</text>','<line x1="18" y1="10" x2="82" y2="10" stroke="#3eb8f5" strokeWidth="5"/><circle cx="50" cy="14" r="7" fill="#888"/><line x1="50" y1="21" x2="50" y2="44" stroke="#888" strokeWidth="3"/><line x1="22" y1="10" x2="38" y2="20" stroke="#c8f53e" strokeWidth="3"/><line x1="78" y1="10" x2="62" y2="20" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="44" x2="38" y2="62" stroke="#888" strokeWidth="3"/><line x1="50" y1="44" x2="62" y2="62" stroke="#888" strokeWidth="3"/><text x="50" y="78" textAnchor="middle" fill="#c8f53e" fontSize="8">CHIN OVER BAR</text>']},
-  "Squat":          {cues:["Knees track toes","Break parallel depth","Weight through heels","Drive hips up"],phases:["Standing","Descend","Parallel","Drive"],color:"#ff4040",
-    frames:['<line x1="15" y1="88" x2="85" y2="88" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="10" r="7" fill="#888"/><line x1="50" y1="17" x2="50" y2="50" stroke="#888" strokeWidth="3"/><rect x="20" y="28" width="60" height="7" rx="3" fill="#ff4040" opacity="0.6"/><line x1="50" y1="50" x2="36" y2="88" stroke="#888" strokeWidth="3"/><line x1="50" y1="50" x2="64" y2="88" stroke="#888" strokeWidth="3"/><text x="50" y="96" textAnchor="middle" fill="#555" fontSize="8">STANDING</text>','<line x1="15" y1="88" x2="85" y2="88" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="30" r="7" fill="#888"/><line x1="50" y1="37" x2="46" y2="62" stroke="#888" strokeWidth="3"/><rect x="22" y="48" width="60" height="7" rx="3" fill="#ff4040" opacity="0.8"/><line x1="46" y1="62" x2="30" y2="88" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="62" x2="68" y2="88" stroke="#c8f53e" strokeWidth="3"/><line x1="30" y1="74" x2="16" y2="70" stroke="#888" strokeWidth="2"/><line x1="68" y1="74" x2="82" y2="70" stroke="#888" strokeWidth="2"/><text x="50" y="96" textAnchor="middle" fill="#c8f53e" fontSize="8">BELOW PARALLEL</text>']},
-  "Overhead Press": {cues:["Bar at upper chest","Press straight overhead","Lock out fully","Control descent"],phases:["Rack","Press","Lockout","Return"],color:"#b03ef5",
-    frames:['<circle cx="50" cy="20" r="7" fill="#888"/><line x1="50" y1="27" x2="50" y2="58" stroke="#888" strokeWidth="3"/><rect x="20" y="33" width="60" height="7" rx="3" fill="#b03ef5" opacity="0.9"/><line x1="50" y1="35" x2="20" y2="38" stroke="#888" strokeWidth="3"/><line x1="50" y1="35" x2="80" y2="38" stroke="#888" strokeWidth="3"/><line x1="50" y1="58" x2="38" y2="76" stroke="#888" strokeWidth="3"/><line x1="50" y1="58" x2="62" y2="76" stroke="#888" strokeWidth="3"/><text x="50" y="88" textAnchor="middle" fill="#555" fontSize="8">START</text>','<circle cx="50" cy="20" r="7" fill="#888"/><line x1="50" y1="27" x2="50" y2="58" stroke="#888" strokeWidth="3"/><rect x="22" y="8" width="56" height="7" rx="3" fill="#b03ef5" opacity="0.9"/><line x1="50" y1="27" x2="24" y2="12" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="27" x2="76" y2="12" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="58" x2="38" y2="76" stroke="#888" strokeWidth="3"/><line x1="50" y1="58" x2="62" y2="76" stroke="#888" strokeWidth="3"/><text x="50" y="88" textAnchor="middle" fill="#c8f53e" fontSize="8">LOCKOUT</text>']},
-  "Lateral Raise":  {cues:["Start with dumbbells at sides","Lead with elbows not wrists","Raise to shoulder height","Lower in 3 seconds"],phases:["Start","Raise","Top","Lower"],color:"#b03ef5",
-    frames:['<circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="56" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="30" y2="50" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="70" y2="50" stroke="#888" strokeWidth="3"/><circle cx="27" cy="52" r="5" fill="#b03ef5" opacity="0.9"/><circle cx="73" cy="52" r="5" fill="#b03ef5" opacity="0.9"/><line x1="50" y1="56" x2="38" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="56" x2="62" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="86" textAnchor="middle" fill="#555" fontSize="8">START</text>','<circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="56" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="16" y2="34" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="36" x2="84" y2="34" stroke="#c8f53e" strokeWidth="3"/><circle cx="13" cy="34" r="5" fill="#b03ef5" opacity="0.9"/><circle cx="87" cy="34" r="5" fill="#b03ef5" opacity="0.9"/><line x1="50" y1="56" x2="38" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="56" x2="62" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="86" textAnchor="middle" fill="#c8f53e" fontSize="8">SHOULDER HEIGHT</text>']},
-  "Barbell Curl":   {cues:["Elbows pinned to sides","Curl bar to shoulder","Squeeze at top","Full stretch at bottom"],phases:["Bottom","Curl","Peak","Lower"],color:"#c8f53e",
-    frames:['<circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="54" stroke="#888" strokeWidth="3"/><line x1="50" y1="38" x2="26" y2="64" stroke="#888" strokeWidth="3"/><line x1="50" y1="38" x2="74" y2="64" stroke="#888" strokeWidth="3"/><rect x="18" y="62" width="64" height="7" rx="3" fill="#c8f53e" opacity="0.9"/><line x1="50" y1="54" x2="36" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="54" x2="64" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="87" textAnchor="middle" fill="#555" fontSize="8">FULL EXTENSION</text>','<circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="54" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="24" y2="38" stroke="#c8f53e" strokeWidth="4"/><line x1="50" y1="36" x2="76" y2="38" stroke="#c8f53e" strokeWidth="4"/><rect x="18" y="33" width="64" height="7" rx="3" fill="#c8f53e" opacity="0.9"/><line x1="50" y1="54" x2="36" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="54" x2="64" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="87" textAnchor="middle" fill="#c8f53e" fontSize="8">PEAK CONTRACTION</text>']},
-  "Hammer Curl":    {cues:["Neutral grip - thumbs up","Curl keeping wrist neutral","No forearm rotation","Full range both ways"],phases:["Bottom","Curl","Top","Lower"],color:"#c8f53e",
-    frames:['<circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="54" stroke="#888" strokeWidth="3"/><line x1="50" y1="38" x2="26" y2="62" stroke="#888" strokeWidth="3"/><line x1="50" y1="38" x2="74" y2="62" stroke="#888" strokeWidth="3"/><rect x="22" y="58" width="9" height="18" rx="2" fill="#e8a83e" opacity="0.9"/><rect x="69" y="58" width="9" height="18" rx="2" fill="#e8a83e" opacity="0.9"/><line x1="50" y1="54" x2="36" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="54" x2="64" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="87" textAnchor="middle" fill="#555" fontSize="8">START</text>','<circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="54" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="22" y2="36" stroke="#c8f53e" strokeWidth="4"/><line x1="50" y1="36" x2="78" y2="36" stroke="#c8f53e" strokeWidth="4"/><rect x="18" y="28" width="9" height="18" rx="2" fill="#e8a83e" opacity="0.9"/><rect x="73" y="28" width="9" height="18" rx="2" fill="#e8a83e" opacity="0.9"/><line x1="50" y1="54" x2="36" y2="74" stroke="#888" strokeWidth="3"/><line x1="50" y1="54" x2="64" y2="74" stroke="#888" strokeWidth="3"/><text x="50" y="87" textAnchor="middle" fill="#c8f53e" fontSize="8">TOP</text>']},
-  "Tricep Pushdown":{cues:["Elbows locked to sides","Push bar all the way down","Full lockout every rep","Slow on the way up"],phases:["Top","Push","Lockout","Return"],color:"#f5c842",
-    frames:['<line x1="50" y1="5" x2="50" y2="22" stroke="#3eb8f5" strokeWidth="3"/><rect x="26" y="22" width="48" height="7" rx="3" fill="#f5c842" opacity="0.9"/><circle cx="50" cy="36" r="7" fill="#888"/><line x1="50" y1="43" x2="50" y2="66" stroke="#888" strokeWidth="3"/><line x1="50" y1="50" x2="26" y2="29" stroke="#888" strokeWidth="3"/><line x1="50" y1="50" x2="74" y2="29" stroke="#888" strokeWidth="3"/><line x1="50" y1="66" x2="38" y2="82" stroke="#888" strokeWidth="3"/><line x1="50" y1="66" x2="62" y2="82" stroke="#888" strokeWidth="3"/><text x="50" y="92" textAnchor="middle" fill="#555" fontSize="8">START</text>','<line x1="50" y1="5" x2="50" y2="22" stroke="#3eb8f5" strokeWidth="3"/><rect x="26" y="62" width="48" height="7" rx="3" fill="#f5c842" opacity="0.9"/><circle cx="50" cy="30" r="7" fill="#888"/><line x1="50" y1="37" x2="50" y2="62" stroke="#888" strokeWidth="3"/><line x1="50" y1="44" x2="26" y2="44" stroke="#c8f53e" strokeWidth="4"/><line x1="50" y1="44" x2="74" y2="44" stroke="#c8f53e" strokeWidth="4"/><line x1="50" y1="62" x2="38" y2="80" stroke="#888" strokeWidth="3"/><line x1="50" y1="62" x2="62" y2="80" stroke="#888" strokeWidth="3"/><text x="50" y="92" textAnchor="middle" fill="#c8f53e" fontSize="8">FULL LOCKOUT</text>']},
-  "Hip Thrust":     {cues:["Shoulders on bench","Feet flat, drive through heels","Squeeze glutes hard at top","Lower under control"],phases:["Bottom","Drive","Peak","Return"],color:"#f53eb0",
-    frames:['<rect x="8" y="48" width="28" height="14" rx="3" fill="#1e1e2a" stroke="#3a3a4a" strokeWidth="1.5"/><line x1="10" y1="82" x2="90" y2="82" stroke="#2a2a3a" strokeWidth="2"/><circle cx="26" cy="40" r="7" fill="#888"/><line x1="26" y1="47" x2="38" y2="60" stroke="#888" strokeWidth="3"/><line x1="38" y1="60" x2="54" y2="80" stroke="#c8f53e" strokeWidth="3"/><line x1="54" y1="80" x2="72" y2="82" stroke="#888" strokeWidth="3"/><rect x="32" y="55" width="46" height="8" rx="3" fill="#f53eb0" opacity="0.5"/><text x="50" y="93" textAnchor="middle" fill="#555" fontSize="8">BOTTOM</text>','<rect x="8" y="48" width="28" height="14" rx="3" fill="#1e1e2a" stroke="#3a3a4a" strokeWidth="1.5"/><line x1="10" y1="82" x2="90" y2="82" stroke="#2a2a3a" strokeWidth="2"/><circle cx="26" cy="40" r="7" fill="#888"/><line x1="26" y1="47" x2="40" y2="50" stroke="#888" strokeWidth="3"/><line x1="40" y1="50" x2="60" y2="50" stroke="#c8f53e" strokeWidth="4"/><line x1="60" y1="50" x2="72" y2="66" stroke="#888" strokeWidth="3"/><rect x="32" y="44" width="46" height="8" rx="3" fill="#f53eb0" opacity="0.95"/><text x="50" y="93" textAnchor="middle" fill="#c8f53e" fontSize="8">SQUEEZE GLUTES</text>']},
-  "Plank":          {cues:["Forearms flat on ground","Neutral spine - no sag","Squeeze abs and glutes","Breathe - do not hold breath"],phases:["Setup","Hold","Breathe","Hold"],color:"#3ef5f5",
-    frames:['<line x1="8" y1="72" x2="92" y2="72" stroke="#2a2a3a" strokeWidth="2"/><circle cx="20" cy="48" r="7" fill="#888"/><line x1="20" y1="55" x2="48" y2="64" stroke="#888" strokeWidth="3"/><line x1="8" y1="64" x2="48" y2="64" stroke="#3ef5f5" strokeWidth="4"/><line x1="48" y1="64" x2="88" y2="72" stroke="#888" strokeWidth="3"/><text x="50" y="84" textAnchor="middle" fill="#555" fontSize="8">HOLD POSITION</text>','<line x1="8" y1="72" x2="92" y2="72" stroke="#2a2a3a" strokeWidth="2"/><circle cx="20" cy="48" r="7" fill="#888"/><line x1="20" y1="55" x2="48" y2="64" stroke="#888" strokeWidth="3"/><line x1="8" y1="64" x2="48" y2="64" stroke="#3ef5f5" strokeWidth="4"/><line x1="48" y1="64" x2="88" y2="72" stroke="#888" strokeWidth="3"/><circle cx="50" cy="56" r="6" fill="none" stroke="#c8f53e" strokeWidth="1.5" opacity="0.7"/><text x="50" y="84" textAnchor="middle" fill="#c8f53e" fontSize="8">BREATHE OUT</text>']},
-  "Standing Calf Raise":{cues:["Full stretch at bottom","Rise onto toes","2 second hold at top","Lower in 3 seconds"],phases:["Stretch","Rise","Peak","Lower"],color:"#f53e3e",
-    frames:['<line x1="15" y1="88" x2="85" y2="88" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="16" r="7" fill="#888"/><line x1="50" y1="23" x2="50" y2="55" stroke="#888" strokeWidth="3"/><rect x="22" y="32" width="56" height="7" rx="3" fill="#f53e3e" opacity="0.5"/><line x1="50" y1="55" x2="38" y2="86" stroke="#888" strokeWidth="3"/><line x1="50" y1="55" x2="62" y2="86" stroke="#888" strokeWidth="3"/><text x="50" y="96" textAnchor="middle" fill="#555" fontSize="8">FLAT FOOT</text>','<line x1="15" y1="88" x2="85" y2="88" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="10" r="7" fill="#888"/><line x1="50" y1="17" x2="50" y2="50" stroke="#888" strokeWidth="3"/><rect x="22" y="24" width="56" height="7" rx="3" fill="#f53e3e" opacity="0.95"/><line x1="50" y1="50" x2="40" y2="76" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="50" x2="60" y2="76" stroke="#c8f53e" strokeWidth="3"/><line x1="40" y1="76" x2="40" y2="88" stroke="#c8f53e" strokeWidth="2"/><line x1="60" y1="76" x2="60" y2="88" stroke="#c8f53e" strokeWidth="2"/><text x="50" y="96" textAnchor="middle" fill="#c8f53e" fontSize="8">ON TOES</text>']},
-  "Treadmill Run":  {cues:["Land midfoot under hips","Drive knee forward","Push off back foot","Arms at 90 degrees"],phases:["Strike","Drive","Push","Recover"],color:"#3eb8f5",
-    frames:['<line x1="10" y1="82" x2="90" y2="82" stroke="#2a2a3a" strokeWidth="2"/><circle cx="44" cy="16" r="7" fill="#888"/><line x1="44" y1="23" x2="44" y2="54" stroke="#888" strokeWidth="3"/><line x1="44" y1="32" x2="28" y2="46" stroke="#3eb8f5" strokeWidth="3"/><line x1="44" y1="32" x2="62" y2="26" stroke="#888" strokeWidth="3"/><line x1="44" y1="54" x2="38" y2="76" stroke="#c8f53e" strokeWidth="3"/><line x1="44" y1="54" x2="58" y2="64" stroke="#888" strokeWidth="3"/><line x1="58" y1="64" x2="70" y2="54" stroke="#888" strokeWidth="3"/><text x="50" y="92" textAnchor="middle" fill="#555" fontSize="8">MID STRIDE</text>','<line x1="10" y1="82" x2="90" y2="82" stroke="#2a2a3a" strokeWidth="2"/><circle cx="50" cy="14" r="7" fill="#888"/><line x1="50" y1="21" x2="50" y2="52" stroke="#888" strokeWidth="3"/><line x1="50" y1="30" x2="66" y2="44" stroke="#3eb8f5" strokeWidth="3"/><line x1="50" y1="30" x2="32" y2="26" stroke="#888" strokeWidth="3"/><line x1="50" y1="52" x2="60" y2="76" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="52" x2="36" y2="62" stroke="#888" strokeWidth="3"/><line x1="36" y1="62" x2="26" y2="52" stroke="#888" strokeWidth="3"/><text x="50" y="92" textAnchor="middle" fill="#c8f53e" fontSize="8">DRIVE PHASE</text>']},
-};
-
-var DEFAULT_ANIM = {
-  cues:["Control the movement","Full range of motion","Exhale on exertion","Stay in good form"],
-  phases:["Start","Move","End","Return"],
-  color:"#888",
-  frames:['<circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="56" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="28" y2="50" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="72" y2="50" stroke="#888" strokeWidth="3"/><line x1="50" y1="56" x2="38" y2="76" stroke="#888" strokeWidth="3"/><line x1="50" y1="56" x2="62" y2="76" stroke="#888" strokeWidth="3"/><text x="50" y="88" textAnchor="middle" fill="#555" fontSize="8">PHASE 1</text>','<circle cx="50" cy="18" r="7" fill="#888"/><line x1="50" y1="25" x2="50" y2="56" stroke="#888" strokeWidth="3"/><line x1="50" y1="36" x2="22" y2="34" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="36" x2="78" y2="34" stroke="#c8f53e" strokeWidth="3"/><line x1="50" y1="56" x2="38" y2="76" stroke="#888" strokeWidth="3"/><line x1="50" y1="56" x2="62" y2="76" stroke="#888" strokeWidth="3"/><text x="50" y="88" textAnchor="middle" fill="#c8f53e" fontSize="8">PHASE 2</text>'],
-};
-
-var EX_DETAIL = {
-  "Bench Press": {
-    difficulty:"Intermediate",equipment:"Barbell + Bench",
-    setup:["Lie flat, eyes directly under the bar","Grip just outside shoulder-width, thumbs wrapped","Retract and depress shoulder blades into the bench","Plant feet firmly — drive them into the floor"],
-    execution:["Unrack with straight arms, bar over lower chest","Lower in a slight arc toward the nipple line — 2-3 sec","Touch chest lightly, no bounce","Press explosively back to lockout in same arc"],
-    mistakes:["Flaring elbows 90deg out — keep them at ~45-75deg","Bouncing the bar off the chest","Losing leg drive / lifting feet","Not retracting scapula — causes shoulder impingement"],
-    breathe:"Inhale on the descent, brace and exhale forcefully on the press",
-    alternatives:["DB Bench Press","Push-ups","Cable Fly"],
-  },
-  "Deadlift": {
-    difficulty:"Advanced",equipment:"Barbell",
-    setup:["Bar over mid-foot — roughly 1 inch from shins","Hip-width stance, toes slightly out","Hinge down, grip just outside knees","Lat engagement: protect your armpits cue — big chest"],
-    execution:["Push the floor away — legs extend first","Bar stays dragging against the shins the entire lift","Hips and shoulders rise at the same rate","Lock out with hips thrust forward, glutes squeezed"],
-    mistakes:["Bar drifting away from body","Hips shooting up first (turning into an RDL)","Rounding the lumbar — never acceptable","Looking up aggressively — causes neck strain"],
-    breathe:"Big breath at bottom, brace hard (Valsalva), exhale fully at lockout",
-    alternatives:["Romanian Deadlift","Rack Pull","Trap Bar Deadlift"],
-  },
-  "Pull-ups": {
-    difficulty:"Intermediate",equipment:"Pull-up bar",
-    setup:["Pronated grip, slightly wider than shoulder-width","Dead hang — full arm extension, lats stretched","Depress shoulders slightly before pulling","Cross feet or keep them straight"],
-    execution:["Lead with elbows pulling toward your hips","Drive elbows down and back — imagine bending the bar","Chin clears the bar at peak","Lower under full control — 2-3 sec descent"],
-    mistakes:["Kipping to get reps — momentum replaces muscle","Not reaching full hang at bottom","Shrugging shoulders instead of depressing them","Partial reps — stopping when it gets hard"],
-    breathe:"Exhale as you pull up, inhale on the way down",
-    alternatives:["Lat Pulldown","Assisted Pull-up","Inverted Row"],
-  },
-  "Squat": {
-    difficulty:"Intermediate",equipment:"Barbell + Squat Rack",
-    setup:["Bar on upper traps (high bar) or rear delts (low bar)","Shoulder-width stance, toes out 15-30deg","Brace core 360deg — big breath before descent","Gaze forward or slightly down, neutral neck"],
-    execution:["Break at hips and knees simultaneously","Knees track over toes — push them out","Hit parallel or below","Drive through heels, hips rise first then torso follows"],
-    mistakes:["Knee cave (valgus collapse) on the way up","Heel rise — needs ankle mobility work","Butt wink at the bottom","Too much forward lean — often bar position issue"],
-    breathe:"Full breath at top, hold through descent and ascent, exhale at lockout",
-    alternatives:["Goblet Squat","Leg Press","Hack Squat"],
-  },
-  "Overhead Press": {
-    difficulty:"Intermediate",equipment:"Barbell",
-    setup:["Grip just outside shoulder-width, bar on upper chest","Elbows slightly in front of the bar","Squeeze glutes and abs — prevents rib flare","Feet shoulder-width or hip-width"],
-    execution:["Press straight up — bar clears the head, then move head through","At lockout bar should be directly over mid-foot","Lower to upper chest under control","Keep wrists stacked over elbows throughout"],
-    mistakes:["Pressing in front instead of slightly back","Hyperextending lower back — core not braced","Not locking out every rep"],
-    breathe:"Inhale and brace before press, exhale at top",
-    alternatives:["DB Shoulder Press","Arnold Press","Push Press"],
-  },
-  "Barbell Row": {
-    difficulty:"Intermediate",equipment:"Barbell",
-    setup:["Hip-width stance, grip just outside knees","Hinge to ~45deg torso angle","Retract scapula slightly before pulling","Arms hanging straight down"],
-    execution:["Pull bar to lower chest / upper abdomen","Drive elbows back and up","Squeeze shoulder blades together at top — 1 sec hold","Lower under control"],
-    mistakes:["Excessive body swing","Pulling to the stomach instead of lower chest","Rounded lower back from too much weight"],
-    breathe:"Exhale on the pull, inhale on the lower",
-    alternatives:["Seated Cable Row","T-Bar Row","Single Arm DB Row"],
-  },
-  "Lateral Raise": {
-    difficulty:"Beginner",equipment:"Dumbbells",
-    setup:["Stand with DBs at sides, slight forward lean (10-15deg)","Soft bend in the elbows","Thumbs slightly lower than pinkies — pour water grip","Brace core, neutral spine"],
-    execution:["Lead with the elbows — not the wrists","Raise to shoulder height only","Pause briefly at top","3-second controlled lowering"],
-    mistakes:["Using momentum / swinging torso","Raising above shoulder height — traps take over","Going too heavy — technique breaks down immediately"],
-    breathe:"Exhale on the raise, inhale on the lower",
-    alternatives:["Cable Lateral Raise","Landmine Lateral","Face Pull"],
-  },
-  "Barbell Curl": {
-    difficulty:"Beginner",equipment:"Barbell (EZ or straight)",
-    setup:["Underhand grip, hands shoulder-width","Elbows pinned to sides — they should not move","Stand tall, slight lean back is okay","Full extension at the bottom"],
-    execution:["Curl bar toward chin in an arc","Supinate wrists at the top — pinky toward ceiling","Squeeze biceps hard at peak — 1 sec","Lower in 2-3 sec — the eccentric builds size"],
-    mistakes:["Swinging with hips and lower back","Elbows drifting forward at the top","Not achieving full extension at bottom"],
-    breathe:"Exhale on the curl, inhale on the descent",
-    alternatives:["Incline DB Curl","Cable Curl","Preacher Curl"],
-  },
-  "Tricep Pushdown": {
-    difficulty:"Beginner",equipment:"Cable Machine",
-    setup:["Set cable to highest pulley","Grip with elbows at ~90deg at start","Elbows pinned tight to ribcage","Slight forward lean from the hips"],
-    execution:["Push down until full lockout — arms straight","Squeeze triceps hard at lockout — 1 sec","Allow controlled return only to 90deg","With rope: spread handles apart at the bottom"],
-    mistakes:["Letting elbows flare out as weight gets heavy","Using body weight to push down","Not reaching full lockout"],
-    breathe:"Exhale on the push, inhale on the return",
-    alternatives:["Skull Crushers","Overhead Tricep Ext","Diamond Push-up"],
-  },
-  "Hip Thrust": {
-    difficulty:"Beginner",equipment:"Barbell + Bench",
-    setup:["Upper back rests on bench edge — across shoulder blades","Feet flat, hip-width, toes slightly out","Bar padded, resting in hip crease","Chin tucked — watch your belly button"],
-    execution:["Drive through heels, push hips up","Squeeze glutes maximally at top — posterior pelvic tilt","Shins vertical or slightly past vertical at top","Lower until hips are just above floor"],
-    mistakes:["Hyperextending lumbar at top","Feet too close or too far","Using quads instead of glutes","Neck not neutral"],
-    breathe:"Exhale forcefully at the top, inhale on descent",
-    alternatives:["Glute Bridge","Cable Kickback","Bulgarian Split Squat"],
-  },
-  "Plank": {
-    difficulty:"Beginner",equipment:"Bodyweight",
-    setup:["Forearms flat, elbows under shoulders","Body in a straight line — head to heels","Toes shoulder-width apart","Don't hold breath — continuous breathing is the challenge"],
-    execution:["Squeeze abs like bracing for a punch","Glutes tight — prevents hip sag","Push elbows into floor and drag them toward feet","Hold for prescribed time without compensation"],
-    mistakes:["Hips too high","Hips too low — excessive lumbar compression","Holding breath","Looking up — strains cervical spine"],
-    breathe:"Slow rhythmic breathing — exhale fully, inhale through nose",
-    alternatives:["Dead Bug","Ab Wheel Rollout","Pallof Press"],
-  },
-  "Romanian Deadlift": {
-    difficulty:"Intermediate",equipment:"Barbell or Dumbbells",
-    setup:["Stand holding bar at hip height — start from rack","Hip-width stance, soft bend in knees","Neutral spine — chest tall, shoulder blades back","Bar stays close to body the entire movement"],
-    execution:["Push hips back — not down","Bar slides down thighs as hips hinge","Feel stretch in hamstrings — lower to mid-shin","Drive hips forward to return, squeeze glutes at top"],
-    mistakes:["Bending knees excessively — becomes a squat","Bar drifting away from body","Rounding the lower back to reach further"],
-    breathe:"Inhale at top, brace, exhale at lockout",
-    alternatives:["Single Leg RDL","Good Morning","Nordic Curl"],
-  },
-  "Standing Calf Raise": {
-    difficulty:"Beginner",equipment:"Calf Raise Machine or Smith",
-    setup:["Balls of feet on platform edge — heels hanging off","Shoulder-width foot position","Slight knee bend","Hands holding for balance only"],
-    execution:["Lower heels below platform — full stretch, 2 sec hold","Rise as high as possible onto toes","2-second squeeze at peak","3-second controlled lowering"],
-    mistakes:["Bouncing — using elastic energy not muscle","Partial range at bottom","Too fast — calves need time under tension"],
-    breathe:"Exhale on the rise, inhale on the descent",
-    alternatives:["Seated Calf Raise","Donkey Calf Raise","Single-Leg Raise"],
-  },
-  "Treadmill Run": {
-    difficulty:"Beginner",equipment:"Treadmill",
-    setup:["Warm up 2 min at walk","Stand tall — slight forward lean from ankles, not waist","Arms at 90deg — drive elbows back, hands relaxed","Look 20-30 ft ahead"],
-    execution:["Land midfoot under center of gravity","Quick cadence — ~170-180 steps/min","Drive knee forward and up on each stride","Push off back foot fully before it leaves the belt"],
-    mistakes:["Holding the handrails","Overstriding (heel striking far in front)","Too much vertical bounce"],
-    breathe:"Nasal in for 2-3 steps, mouth out for 2-3 steps — find your rhythm",
-    alternatives:["Bike Intervals","Stair Climber","Rowing Machine"],
-  },
-};
 
 function ExerciseAnimation({exerciseName,color}){
   var anim=EX_ANIMS[exerciseName]||DEFAULT_ANIM;
