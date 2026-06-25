@@ -1336,6 +1336,7 @@ export default function App({user,supabase}){
     }catch(e){console.log("Social load error:",e);}
     setSocialLoaded(true);
     loadReferralData();
+    loadFeed();
   }
 
   // ── Referral System ──────────────────────────────────────
@@ -1898,8 +1899,8 @@ export default function App({user,supabase}){
     var cutStr=cutoff.toISOString().split("T")[0];
 
     // Filter workouts/meals to selected range
-    var rngWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at>=cutStr;});
-    var rngMeals=meals.filter(function(m){return m.logged_at&&m.logged_at>=cutStr;});
+    var rngWorkouts=workouts.filter(function(w){return w.logged_at&&w.logged_at>=cutStr;}).sort(function(a,b){return b.logged_at>a.logged_at?1:-1;});
+    var rngMeals=meals.filter(function(m){return m.logged_at&&m.logged_at>=cutStr;}).sort(function(a,b){return b.logged_at>a.logged_at?1:-1;});
 
     // Group workouts by date
     var wByDate={};
