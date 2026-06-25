@@ -1428,11 +1428,19 @@ export default function App({user,supabase}){
         partnerIds.push(m.from_user_id===user.id?m.to_user_id:m.from_user_id);
       });
       // Get feed posts from self + partners
-      var{data:posts}=await sb.from("feed_posts")
-        .select("*, author:profiles!feed_posts_user_id_fkey(display_name,username,avatar_index,xp,level)")
+      var{data:posts,error:pe}=await sb.from("feed_posts")
+        .select("*")
         .in("user_id",partnerIds)
         .order("created_at",{ascending:false})
         .limit(30);
+      if(pe)console.log("Feed posts error:",pe.message);
+      // Get profile info for each unique user
+      var uids=[...new Set((posts||[]).map(function(p){return p.user_id;}))];
+      var profileMap={};
+      if(uids.length>0){
+        var{data:profs}=await sb.from("profiles").select("id,display_name,username,avatar_index,xp,level").in("id",uids);
+        (profs||[]).forEach(function(p){profileMap[p.id]=p;});
+      }
       // Get reaction counts
       var postIds=(posts||[]).map(function(p){return p.id;});
       var reactionMap={};
@@ -1445,7 +1453,7 @@ export default function App({user,supabase}){
       }
       var enriched=(posts||[]).map(function(p){
         var rc=reactionMap[p.id]||{fire:0,muscle:0,clap:0};
-        var a=p.author||{};
+        var a=profileMap[p.user_id]||{};
         return{
           id:p.id,user_id:p.user_id,post_type:p.post_type,
           title:p.title,content:p.content,created_at:p.created_at,
@@ -1462,8 +1470,11 @@ export default function App({user,supabase}){
 
   async function postToFeed(type,title,body){
     var sb=supabase||sbClient;
-    try{await sb.from("feed_posts").insert({user_id:user.id,post_type:type,title:title,content:body});}
-    catch(e){console.log("Feed post error:",e);}
+    try{
+      var{error:fe}=await sb.from("feed_posts").insert({user_id:user.id,post_type:type,title:title,content:body});
+      if(fe)console.log("Feed post error:",fe.message);
+      else{console.log("Feed posted ok");loadFeed();}
+    }catch(e){console.log("Feed post exception:",e);}
   }
 
   async function reactToPost(postId,reaction){
