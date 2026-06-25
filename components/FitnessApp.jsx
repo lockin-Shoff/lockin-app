@@ -1215,6 +1215,11 @@ export default function App({user,supabase}){
   var[darkMode,setDarkMode]=useState(true);
   var[refCode,setRefCode]=useState("");
   var[refCopied,setRefCopied]=useState(false);
+  var[feed,setFeed]=useState([]);
+  var[feedLoading,setFeedLoading]=useState(false);
+  var[feedComment,setFeedComment]=useState({});
+  var[showComments,setShowComments]=useState({});
+  var[postComments,setPostComments]=useState({});
   var[showFeedback,setShowFeedback]=useState(false);
   var[feedbackText,setFeedbackText]=useState("");
   var[feedbackType,setFeedbackType]=useState("feedback");
@@ -1408,6 +1413,62 @@ export default function App({user,supabase}){
     setTimeout(function(){setShowFeedback(false);setFeedbackSent(false);},2000);
   }
 
+  // ── Activity Feed ──────────────────────────────────────────
+  async function loadFeed(){
+    var sb=supabase||sbClient;
+    setFeedLoading(true);
+    try{
+      var{data}=await sb.rpc("get_my_feed",{limit_count:30});
+      setFeed(data||[]);
+    }catch(e){console.log("Feed error:",e);}
+    setFeedLoading(false);
+  }
+
+  async function postToFeed(type,title,body){
+    var sb=supabase||sbClient;
+    try{await sb.from("feed_posts").insert({user_id:user.id,post_type:type,title:title,content:body});}
+    catch(e){console.log("Feed post error:",e);}
+  }
+
+  async function reactToPost(postId,reaction){
+    var sb=supabase||sbClient;
+    try{
+      var{data:ex}=await sb.from("post_reactions").select("id").eq("post_id",postId).eq("user_id",user.id).eq("reaction",reaction).maybeSingle();
+      if(ex){await sb.from("post_reactions").delete().eq("id",ex.id);}
+      else{await sb.from("post_reactions").insert({post_id:postId,user_id:user.id,reaction:reaction});}
+      loadFeed();
+    }catch(e){loadFeed();}
+  }
+
+  async function submitComment(postId){
+    var sb=supabase||sbClient;
+    var txt=(feedComment[postId]||"").trim();
+    if(!txt)return;
+    try{
+      await sb.from("post_comments").insert({post_id:postId,user_id:user.id,content:txt});
+      setFeedComment(function(p){return Object.assign({},p,{[postId]:""});});
+      loadPostComments(postId);
+    }catch(e){}
+  }
+
+  async function loadPostComments(postId){
+    var sb=supabase||sbClient;
+    try{
+      var{data}=await sb.from("post_comments")
+        .select("*, author:profiles!post_comments_user_id_fkey(display_name,username,avatar_index)")
+        .eq("post_id",postId).order("created_at",{ascending:true});
+      setPostComments(function(p){return Object.assign({},p,{[postId]:data||[]});});
+    }catch(e){}
+  }
+
+  function timeAgo(ts){
+    var s=Math.floor((Date.now()-new Date(ts))/1000);
+    if(s<60)return "just now";
+    if(s<3600)return Math.floor(s/60)+"m ago";
+    if(s<86400)return Math.floor(s/3600)+"h ago";
+    return Math.floor(s/86400)+"d ago";
+  }
+
   async function sendMatchReq(toUserId){
     var sb=supabase||sbClient;
     if(!user){console.log("No user");return;}
@@ -1571,6 +1632,7 @@ export default function App({user,supabase}){
         var xpAmt=50+(exDur>=30?25:0);
         earnXP(xpAmt,"💪 Logged "+selEx.name+"!");
         checkAndUpdateStreak();
+        postToFeed("workout",selEx.name,exDur+" min · "+c+" kcal burned");
       }
     }catch(e){console.log("Workout save exception:",e);}
   }
@@ -1602,6 +1664,9 @@ export default function App({user,supabase}){
     var recNow=new Date().toISOString();
     setWorkouts(workouts.concat([{id:Date.now(),name:recName||"Recorded Workout",em:EM.lift,dur:Math.max(1,Math.round(timer.elapsed/60)),cal:c,cat:"Strength",logged_at:recNow,date:new Date().toLocaleDateString([],{month:"short",day:"numeric"}),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),moves:moves,sets:(()=>{var s=[];moves.forEach(function(mv){mv.sets.forEach(function(st){s.push(Object.assign({exercise:mv.name},st));});});return s;})(),totalSets:ts,doneSets:ds}]));
     setShowRec(false);setMoves([]);setRecName("");setActiveIdx(null);setRestSecs(null);timer.reset();
+    postToFeed("workout",recName||"Recorded Workout",Math.max(1,Math.round(timer.elapsed/60))+" min · "+ts+" sets · "+c+" kcal burned");
+    earnXP(75,"💪 Completed workout!");
+    checkAndUpdateStreak();
     if(user&&supabase){
       try{
         var{data:wd}=await (supabase||sbClient).from("workouts").insert({user_id:user.id,name:recName||"Recorded Workout",category:"Strength",duration:Math.max(1,Math.round(timer.elapsed/60)),calories:c}).select().single();
@@ -2544,8 +2609,80 @@ export default function App({user,supabase}){
 
           {/* Sub tabs */}
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3}}>
-            {[["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={()=>setSocialTab(x[0])} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
+            {[["feed","Feed"],["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={()=>setSocialTab(x[0])} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
           </div>
+
+          {/* FEED */}
+          {socialTab==="feed"&&(<div>
+            {feedLoading&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>Loading feed...</div>}
+            {!feedLoading&&feed.length===0&&(<div style={{textAlign:"center",padding:"40px 16px"}}>
+              <div style={{fontSize:36,marginBottom:10}}>&#127916;</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:6}}>Nothing here yet</div>
+              <div style={{fontSize:11,color:"#555",lineHeight:1.6}}>When your matches log workouts they'll show up here. Log a workout to post to their feed.</div>
+            </div>)}
+            {feed.map(function(post){
+              var li=getLevelInfo(post.xp||0);
+              var isMe=post.user_id===user.id;
+              var showC=showComments[post.id];
+              var comments=postComments[post.id]||[];
+              return(<div key={post.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:14,padding:"13px",marginBottom:10}}>
+                {/* Header */}
+                <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
+                  <div style={{position:"relative",flexShrink:0}}>
+                    <div style={{width:38,height:38,borderRadius:"50%",background:"#0a0a0f",border:"2px solid "+li.color+"44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>
+                      {AVATARS[post.avatar_index||0]}
+                    </div>
+                    <div style={{position:"absolute",bottom:-3,right:-3,background:li.color,borderRadius:99,padding:"1px 4px",fontSize:7,fontWeight:700,color:"#0a0a0f",border:"1px solid #0a0a0f"}}>{li.em}{li.level}</div>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{post.display_name||post.username||"User"}{isMe&&<span style={{fontSize:9,color:"#555",fontWeight:400}}> (you)</span>}</div>
+                    <div style={{fontSize:10,color:"#555"}}>{timeAgo(post.created_at)}</div>
+                  </div>
+                  <div style={{fontSize:18}}>&#128170;</div>
+                </div>
+                {/* Content */}
+                <div style={{background:"#0a0a0f",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:3}}>{post.title}</div>
+                  {post.content&&<div style={{fontSize:11,color:"#888"}}>{post.content}</div>}
+                </div>
+                {/* Reactions */}
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                  {[["fire","&#128293;",(post.reaction_fire||0)],["muscle","&#128170;",(post.reaction_muscle||0)],["clap","&#128079;",(post.reaction_clap||0)]].map(function(r){
+                    return(<button key={r[0]} onClick={function(){if(!isMe)reactToPost(post.id,r[0]);}} style={{display:"flex",alignItems:"center",gap:4,background:"#0a0a0f",border:"1px solid #2a2a3a",borderRadius:99,padding:"5px 10px",cursor:isMe?"default":"pointer",fontFamily:"inherit",opacity:isMe?0.5:1,transition:"all .15s"}}>
+                      <span dangerouslySetInnerHTML={{__html:r[1]}} style={{fontSize:14}}/>
+                      {r[2]>0&&<span style={{fontSize:11,fontWeight:700,color:"#e8e4dc"}}>{r[2]}</span>}
+                    </button>);
+                  })}
+                  <button onClick={function(){
+                    var next=!showC;
+                    setShowComments(function(p){return Object.assign({},p,{[post.id]:next});});
+                    if(next&&!postComments[post.id])loadPostComments(post.id);
+                  }} style={{marginLeft:"auto",background:"none",border:"none",color:"#555",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700}}>
+                    &#128172; {comments.length>0?comments.length:"Comment"}
+                  </button>
+                </div>
+                {/* Comments */}
+                {showC&&(<div style={{borderTop:"1px solid #1a1a22",paddingTop:9}}>
+                  {comments.map(function(c){return(
+                    <div key={c.id} style={{display:"flex",gap:7,marginBottom:7,alignItems:"flex-start"}}>
+                      <div style={{width:26,height:26,borderRadius:"50%",background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{AVATARS[(c.author&&c.author.avatar_index)||0]}</div>
+                      <div style={{background:"#0a0a0f",borderRadius:9,padding:"6px 10px",flex:1}}>
+                        <div style={{fontSize:9,fontWeight:700,color:"#555",marginBottom:2}}>{(c.author&&(c.author.display_name||c.author.username))||"User"}</div>
+                        <div style={{fontSize:12,color:"#e8e4dc"}}>{c.content}</div>
+                      </div>
+                    </div>
+                  );})}
+                  <div style={{display:"flex",gap:7,marginTop:6}}>
+                    <input className="inp" placeholder="Add a comment..." value={feedComment[post.id]||""}
+                      onChange={function(e){setFeedComment(function(p){return Object.assign({},p,{[post.id]:e.target.value});});}}
+                      onKeyDown={function(e){if(e.key==="Enter")submitComment(post.id);}}
+                      style={{flex:1,fontSize:12,padding:"7px 10px"}}/>
+                    <button onClick={function(){submitComment(post.id);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:8,padding:"7px 13px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:12}}>Post</button>
+                  </div>
+                </div>)}
+              </div>);
+            })}
+          </div>)}
 
           {/* DISCOVER */}
           {socialTab==="discover"&&(<div>
