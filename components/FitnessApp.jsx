@@ -219,294 +219,206 @@ function MuscleDiagram({exerciseName,color}){
     return function(){clearInterval(t);};
   },[exerciseName]);
   var pulse=0.18*Math.sin((pulsePhase/60)*2*Math.PI);
+  var sk1="#c4845a",sk2="#b87348",sk3="#a86030",sk4="#d4956a";
 
-  // Skin tones
-  var sk1="#c4845a",sk2="#b87348",sk3="#a86030",sk4="#d4956a",sk5="#e8a878";
-
-  // ── FRONT BODY ── realistic anatomical paths (54x155 viewBox)
   var FRONT_BODY=[
-    // Head
     {d:"M19,1 Q27,-2 35,1 Q41,6 41,14 Q41,23 27,25 Q13,23 13,14 Q13,6 19,1 Z",f:sk4},
     {d:"M20,3 Q27,0 34,3 Q39,7 39,13 Q39,20 27,22 Q15,20 15,13 Q15,7 20,3 Z",f:sk1},
-    // Neck
     {d:"M22,23 Q27,22 32,23 L33,29 Q30,31 27,31 Q24,31 21,29 Z",f:sk2},
-    // Traps visible from front
     {d:"M10,29 Q18,25 27,27 Q36,25 44,29 L42,35 Q35,32 27,33 Q19,32 12,35 Z",f:sk2},
-    // Upper chest / clavicle area
     {d:"M12,33 Q27,29 42,33 L41,42 Q35,39 27,40 Q19,39 13,42 Z",f:sk1},
-    // Pec major left
     {d:"M12,38 Q20,36 27,39 L26,54 Q20,57 13,54 Q9,50 10,44 Z",f:sk2},
-    // Pec major right
     {d:"M27,39 Q34,36 42,38 L44,44 Q45,50 41,54 Q34,57 28,54 Z",f:sk2},
-    // Pec detail left
-    {d:"M13,42 Q20,40 26,43 L25,52 Q19,54 14,51 Z",f:sk1},
-    // Pec detail right
-    {d:"M28,43 Q34,40 41,42 L40,51 Q35,54 29,52 Z",f:sk1},
-    // Serratus left
-    {d:"M9,45 Q13,43 14,50 L13,60 Q8,58 7,52 Z",f:sk3},
-    {d:"M9,52 Q13,50 14,57 L12,63 Q7,61 7,56 Z",f:sk3},
-    // Serratus right
-    {d:"M45,45 Q41,43 40,50 L41,60 Q46,58 47,52 Z",f:sk3},
-    {d:"M45,52 Q41,50 40,57 L42,63 Q47,61 47,56 Z",f:sk3},
-    // Abs - rectus abdominis (6 pack)
+    {d:"M9,45 Q13,43 15,52 L13,62 Q7,60 7,52 Z",f:sk3},
+    {d:"M45,45 Q41,43 39,52 L41,62 Q47,60 47,52 Z",f:sk3},
     {d:"M20,53 Q24,51 27,52 L27,60 Q24,61 20,60 Z",f:sk2},
     {d:"M27,52 Q30,51 34,53 L34,60 Q30,61 27,60 Z",f:sk2},
     {d:"M20,60 Q24,59 27,60 L27,68 Q24,69 20,68 Z",f:sk1},
     {d:"M27,60 Q30,59 34,60 L34,68 Q30,69 27,68 Z",f:sk1},
     {d:"M20,68 Q24,67 27,68 L27,76 Q24,77 20,76 Z",f:sk2},
     {d:"M27,68 Q30,67 34,68 L34,76 Q30,77 27,76 Z",f:sk2},
-    // Linea alba
     {d:"M26,52 L28,52 L28,77 L26,77 Z",f:sk3},
-    // Obliques left
     {d:"M10,55 Q15,52 20,55 L19,74 Q13,77 9,72 Z",f:sk2},
-    // Obliques right
     {d:"M34,55 Q39,52 44,55 L45,72 Q41,77 35,74 Z",f:sk2},
-    // Hip flexors / lower abs
     {d:"M18,74 Q22,72 27,73 L26,82 Q22,84 17,81 Z",f:sk1},
     {d:"M27,73 Q32,72 36,74 L37,81 Q32,84 28,82 Z",f:sk1},
-    // Left arm - deltoid
     {d:"M5,30 Q11,27 15,32 L14,43 Q9,46 4,42 Z",f:sk2},
-    // Right arm - deltoid
     {d:"M39,32 Q43,27 49,30 L50,42 Q45,46 40,43 Z",f:sk2},
-    // Left arm - bicep
     {d:"M3,42 Q8,40 12,43 L11,60 Q7,63 2,59 Z",f:sk1},
-    // Right arm - bicep
     {d:"M42,43 Q46,40 51,42 L52,59 Q47,63 43,60 Z",f:sk1},
-    // Left forearm
     {d:"M2,59 Q7,57 11,60 L10,80 Q6,83 1,79 Z",f:sk2},
-    // Right forearm
     {d:"M43,60 Q47,57 52,59 L53,79 Q48,83 44,80 Z",f:sk2},
-    // Left hand
     {d:"M1,79 Q5,77 10,80 L9,92 Q5,94 0,91 Z",f:sk4},
-    // Right hand
     {d:"M44,80 Q49,77 53,79 L54,91 Q49,94 45,92 Z",f:sk4},
-    // Left quad
     {d:"M15,82 Q21,79 27,81 L26,112 Q20,115 13,111 Z",f:sk2},
-    // Right quad
     {d:"M27,81 Q33,79 39,82 L41,111 Q34,115 28,112 Z",f:sk2},
-    // Left quad inner
     {d:"M20,85 Q25,83 27,86 L26,108 Q23,110 19,108 Z",f:sk1},
-    // Right quad inner
     {d:"M27,86 Q29,83 34,85 L35,108 Q31,110 28,108 Z",f:sk1},
-    // Left knee
     {d:"M14,110 Q21,108 27,110 L26,118 Q19,120 13,117 Z",f:sk3},
-    // Right knee
     {d:"M27,110 Q33,108 40,110 L41,117 Q35,120 28,118 Z",f:sk3},
-    // Left calf
     {d:"M13,118 Q20,116 26,118 L25,142 Q18,145 11,140 Z",f:sk2},
-    // Right calf
     {d:"M28,118 Q34,116 41,118 L43,140 Q37,145 29,142 Z",f:sk2},
-    // Left ankle/foot
     {d:"M11,140 Q18,138 25,141 L24,152 Q17,154 10,151 Z",f:sk4},
-    // Right ankle/foot
     {d:"M29,141 Q36,138 43,140 L44,151 Q37,154 30,152 Z",f:sk4},
   ];
 
-  // ── BACK BODY ── (offset x+54)
   var BACK_BODY=[
-    // Head
     {d:"M73,1 Q81,-2 89,1 Q95,6 95,14 Q95,23 81,25 Q67,23 67,14 Q67,6 73,1 Z",f:sk4},
     {d:"M74,3 Q81,0 88,3 Q93,7 93,13 Q93,20 81,22 Q69,20 69,13 Q69,7 74,3 Z",f:sk1},
-    // Neck
     {d:"M76,23 Q81,22 86,23 L87,29 Q84,31 81,31 Q78,31 75,29 Z",f:sk2},
-    // Upper traps
     {d:"M62,29 Q71,24 81,26 Q91,24 100,29 L98,36 Q90,32 81,33 Q72,32 66,36 Z",f:sk2},
-    // Trap mid
     {d:"M65,35 Q73,32 81,33 Q89,32 97,35 L96,50 Q88,53 81,54 Q74,53 66,50 Z",f:sk1},
-    // Rhomboids
     {d:"M69,36 Q75,33 81,34 Q87,33 93,36 L92,50 Q87,52 81,53 Q75,52 70,50 Z",f:sk2},
-    // Lat left
     {d:"M62,40 Q68,36 72,42 L70,72 Q63,76 57,70 Z",f:sk2},
-    // Lat right
     {d:"M90,42 Q94,36 100,40 L107,70 Q101,76 94,72 Z",f:sk2},
-    // Lat detail left
     {d:"M63,44 Q68,40 72,44 L70,68 Q65,70 61,66 Z",f:sk1},
-    // Lat detail right
     {d:"M90,44 Q94,40 99,44 L101,66 Q97,70 92,68 Z",f:sk1},
-    // Teres major/minor left
     {d:"M62,36 Q66,32 70,37 L69,48 Q64,51 60,47 Z",f:sk3},
-    // Teres major/minor right
     {d:"M92,37 Q96,32 100,36 L102,47 Q98,51 93,48 Z",f:sk3},
-    // Erector spinae
     {d:"M77,35 Q79,33 81,35 L80,72 Q78,73 76,72 Z",f:sk3},
     {d:"M81,35 Q83,33 85,35 L84,72 Q82,73 81,72 Z",f:sk3},
-    // Lower back
     {d:"M68,68 Q74,65 81,66 Q88,65 94,68 L93,78 Q87,81 81,82 Q75,81 69,78 Z",f:sk2},
-    // Glutes
     {d:"M65,78 Q73,73 81,75 L80,98 Q72,102 63,97 Z",f:sk2},
     {d:"M81,75 Q89,73 97,78 L99,97 Q90,102 82,98 Z",f:sk2},
-    // Glute detail
     {d:"M67,80 Q74,76 81,78 L80,96 Q73,99 66,95 Z",f:sk1},
     {d:"M81,78 Q88,76 95,80 L97,95 Q90,99 82,96 Z",f:sk1},
-    // Left arm back - deltoid
     {d:"M57,30 Q63,27 67,33 L66,44 Q61,47 56,43 Z",f:sk2},
-    // Right arm back - deltoid
     {d:"M95,33 Q99,27 105,30 L106,43 Q101,47 96,44 Z",f:sk2},
-    // Left tricep
     {d:"M55,43 Q60,41 65,44 L64,63 Q59,66 54,62 Z",f:sk1},
-    // Right tricep
     {d:"M97,44 Q102,41 107,43 L108,62 Q103,66 98,63 Z",f:sk1},
-    // Left forearm back
     {d:"M54,62 Q59,60 64,63 L63,82 Q58,85 53,81 Z",f:sk2},
-    // Right forearm back
     {d:"M98,63 Q103,60 108,62 L109,81 Q104,85 99,82 Z",f:sk2},
-    // Left hand
     {d:"M53,81 Q57,79 63,82 L62,93 Q57,95 52,92 Z",f:sk4},
-    // Right hand
     {d:"M99,82 Q105,79 109,81 L110,92 Q105,95 100,93 Z",f:sk4},
-    // Hamstrings left
     {d:"M65,98 Q73,95 81,97 L80,128 Q72,131 63,126 Z",f:sk2},
-    // Hamstrings right
     {d:"M81,97 Q89,95 97,98 L99,126 Q90,131 82,128 Z",f:sk2},
-    // Ham detail left
     {d:"M67,100 Q74,97 80,99 L79,124 Q73,126 66,123 Z",f:sk1},
-    // Ham detail right
     {d:"M82,99 Q88,97 95,100 L97,123 Q90,126 83,124 Z",f:sk1},
-    // Knee back left
     {d:"M64,126 Q72,124 80,126 L79,134 Q71,136 63,133 Z",f:sk3},
-    // Knee back right
     {d:"M82,126 Q90,124 98,126 L99,133 Q91,136 83,134 Z",f:sk3},
-    // Calf left
     {d:"M63,134 Q71,132 79,134 L78,150 Q70,153 61,148 Z",f:sk2},
-    // Calf right
     {d:"M83,134 Q91,132 99,134 L101,148 Q92,153 84,150 Z",f:sk2},
-    // Ankle/foot back
     {d:"M61,148 Q70,146 78,149 L77,155 Q69,157 60,154 Z",f:sk4},
     {d:"M84,149 Q92,146 101,148 L102,154 Q93,157 85,155 Z",f:sk4},
   ];
 
-  // Muscle overlay paths - FRONT (more anatomically accurate shapes)
   var AF={
-    "Pec Major (Sternal)":     "M13,42 Q20,39 27,41 L26,54 Q19,57 13,53 Z M27,41 Q34,39 41,42 L41,53 Q35,57 28,54 Z",
-    "Pec Major (Clavicular)":  "M13,33 Q20,30 27,32 L26,42 Q19,43 13,41 Z M27,32 Q34,30 41,33 L41,41 Q35,43 28,42 Z",
-    "Pec Minor":               "M16,36 Q22,33 27,35 L26,46 Q21,47 16,44 Z M27,35 Q32,33 38,36 L38,44 Q33,47 28,46 Z",
-    "Serratus Anterior":       "M9,44 Q13,42 15,47 L14,54 Q10,55 8,51 Z M39,47 Q41,42 45,44 L46,51 Q44,55 40,54 Z M9,53 Q12,51 14,56 L13,62 Q9,63 7,58 Z M40,56 Q42,51 45,53 L46,58 Q44,63 40,62 Z",
-    "Ant Deltoid":             "M5,30 Q11,27 15,33 L14,44 Q9,47 4,43 Z M39,33 Q43,27 49,30 L50,43 Q45,47 40,44 Z",
-    "Mid Deltoid":             "M2,40 Q7,37 11,41 L10,54 Q5,57 1,53 Z M43,41 Q47,37 52,40 L53,53 Q49,57 44,54 Z",
-    "Bicep Long Head":         "M3,42 Q7,40 10,43 L9,58 Q5,61 2,57 Z M44,43 Q47,40 51,42 L52,57 Q49,61 45,58 Z",
-    "Bicep Short Head":        "M7,42 Q10,40 13,43 L12,58 Q9,61 6,58 Z M41,43 Q44,40 47,42 L46,58 Q43,61 40,58 Z",
-    "Brachialis":              "M3,57 Q7,55 11,58 L10,66 Q7,68 3,65 Z M43,58 Q47,55 51,57 L52,65 Q48,68 44,66 Z",
-    "Brachioradialis":         "M2,64 Q6,62 10,65 L9,80 Q5,82 1,78 Z M44,65 Q48,62 52,64 L53,78 Q49,82 45,80 Z",
-    "Flex Carpi Radialis":     "M2,78 Q5,76 9,78 L8,88 Q5,90 1,87 Z M45,78 Q49,76 52,78 L53,87 Q49,90 46,88 Z",
-    "Flex Carpi Ulnaris":      "M1,76 Q4,74 6,77 L5,87 Q3,88 0,86 Z M48,77 Q50,74 53,76 L54,86 Q51,88 49,87 Z",
-    "Pronator Teres":          "M5,60 Q9,58 12,62 L11,69 Q8,71 5,68 Z M42,62 Q45,58 49,60 L49,68 Q46,71 43,69 Z",
-    "Flex Digitorum":          "M1,86 Q5,84 9,87 L8,93 Q5,95 1,92 Z M45,87 Q49,84 53,86 L54,92 Q50,95 46,93 Z",
-    "Rectus Abdominis":        "M20,53 Q24,51 27,52 L27,76 Q23,77 19,76 Z M27,52 Q30,51 34,53 L35,76 Q31,77 27,76 Z",
-    "Obliques":                "M10,55 Q15,52 20,55 L19,74 Q13,77 9,72 Z M34,55 Q39,52 44,55 L45,72 Q41,77 35,74 Z",
-    "Transverse Abdominis":    "M18,62 Q22,60 27,61 L27,74 Q23,75 18,74 Z M27,61 Q32,60 36,62 L36,74 Q31,75 27,74 Z",
-    "Hip Flexors":             "M18,74 Q22,72 27,73 L26,82 Q21,84 17,80 Z M27,73 Q32,72 36,74 L37,80 Q33,84 28,82 Z",
-    "Quad (Rectus Femoris)":   "M20,82 Q24,79 28,81 L27,110 Q23,112 19,109 Z",
-    "Quad (Vastus Lat)":       "M14,83 Q19,80 22,84 L21,112 Q16,115 12,111 Z M32,84 Q35,80 40,83 L42,111 Q38,115 33,112 Z",
-    "Quad (Vastus Med)":       "M22,90 Q26,87 30,90 L29,110 Q25,113 21,110 Z",
-    "Quad (Vastus Int)":       "M20,82 Q24,79 28,82 L27,108 Q23,110 19,108 Z",
-    "Adductor Magnus":         "M21,82 Q25,80 27,82 L26,108 Q23,110 20,108 Z M27,82 Q29,80 33,82 L34,108 Q31,110 28,108 Z",
-    "Gastrocnemius (Med)":     "M14,118 Q20,116 26,118 L25,140 Q19,143 13,139 Z M28,118 Q34,116 40,118 L41,139 Q35,143 29,140 Z",
-    "Gastrocnemius (Lat)":     "M11,120 Q16,118 19,122 L18,140 Q13,143 9,139 Z M35,122 Q38,118 43,120 L45,139 Q41,143 36,140 Z",
-    "Soleus":                  "M12,134 Q20,132 28,132 L29,148 Q20,150 11,148 Z M28,132 Q36,132 42,134 L43,148 Q35,150 27,148 Z",
-    "Tibialis Anterior":       "M11,118 Q15,116 18,120 L17,138 Q13,140 10,137 Z M36,120 Q39,116 43,118 L44,137 Q41,140 37,138 Z",
+    "Pec Major (Sternal)":"M13,42 Q20,39 27,41 L26,54 Q19,57 13,53 Z M27,41 Q34,39 41,42 L41,53 Q35,57 28,54 Z",
+    "Pec Major (Clavicular)":"M13,33 Q20,30 27,32 L26,42 Q19,43 13,41 Z M27,32 Q34,30 41,33 L41,41 Q35,43 28,42 Z",
+    "Pec Minor":"M16,36 Q22,33 27,35 L26,46 Q21,47 16,44 Z M27,35 Q32,33 38,36 L38,44 Q33,47 28,46 Z",
+    "Serratus Anterior":"M9,44 Q13,42 15,47 L14,54 Q10,55 8,51 Z M39,47 Q41,42 45,44 L46,51 Q44,55 40,54 Z",
+    "Ant Deltoid":"M5,30 Q11,27 15,33 L14,44 Q9,47 4,43 Z M39,33 Q43,27 49,30 L50,43 Q45,47 40,44 Z",
+    "Mid Deltoid":"M2,40 Q7,37 11,41 L10,54 Q5,57 1,53 Z M43,41 Q47,37 52,40 L53,53 Q49,57 44,54 Z",
+    "Bicep Long Head":"M3,42 Q7,40 10,43 L9,58 Q5,61 2,57 Z M44,43 Q47,40 51,42 L52,57 Q49,61 45,58 Z",
+    "Bicep Short Head":"M7,42 Q10,40 13,43 L12,58 Q9,61 6,58 Z M41,43 Q44,40 47,42 L46,58 Q43,61 40,58 Z",
+    "Brachialis":"M3,57 Q7,55 11,58 L10,66 Q7,68 3,65 Z M43,58 Q47,55 51,57 L52,65 Q48,68 44,66 Z",
+    "Brachioradialis":"M2,64 Q6,62 10,65 L9,80 Q5,82 1,78 Z M44,65 Q48,62 52,64 L53,78 Q49,82 45,80 Z",
+    "Flex Carpi Radialis":"M2,78 Q5,76 9,78 L8,88 Q5,90 1,87 Z M45,78 Q49,76 52,78 L53,87 Q49,90 46,88 Z",
+    "Flex Carpi Ulnaris":"M1,76 Q4,74 6,77 L5,87 Q3,88 0,86 Z M48,77 Q50,74 53,76 L54,86 Q51,88 49,87 Z",
+    "Pronator Teres":"M5,60 Q9,58 12,62 L11,69 Q8,71 5,68 Z M42,62 Q45,58 49,60 L49,68 Q46,71 43,69 Z",
+    "Flex Digitorum":"M1,86 Q5,84 9,87 L8,93 Q5,95 1,92 Z M45,87 Q49,84 53,86 L54,92 Q50,95 46,93 Z",
+    "Rectus Abdominis":"M20,53 Q24,51 27,52 L27,76 Q23,77 19,76 Z M27,52 Q30,51 34,53 L35,76 Q31,77 27,76 Z",
+    "Obliques":"M10,55 Q15,52 20,55 L19,74 Q13,77 9,72 Z M34,55 Q39,52 44,55 L45,72 Q41,77 35,74 Z",
+    "Transverse Abdominis":"M18,62 Q22,60 27,61 L27,74 Q23,75 18,74 Z M27,61 Q32,60 36,62 L36,74 Q31,75 27,74 Z",
+    "Hip Flexors":"M18,74 Q22,72 27,73 L26,82 Q21,84 17,80 Z M27,73 Q32,72 36,74 L37,80 Q33,84 28,82 Z",
+    "Quad (Rectus Femoris)":"M20,82 Q24,79 28,81 L27,110 Q23,112 19,109 Z",
+    "Quad (Vastus Lat)":"M14,83 Q19,80 22,84 L21,112 Q16,115 12,111 Z M32,84 Q35,80 40,83 L42,111 Q38,115 33,112 Z",
+    "Quad (Vastus Med)":"M22,90 Q26,87 30,90 L29,110 Q25,113 21,110 Z",
+    "Quad (Vastus Int)":"M20,82 Q24,79 28,82 L27,108 Q23,110 19,108 Z",
+    "Adductor Magnus":"M21,82 Q25,80 27,82 L26,108 Q23,110 20,108 Z M27,82 Q29,80 33,82 L34,108 Q31,110 28,108 Z",
+    "Gastrocnemius (Med)":"M14,118 Q20,116 26,118 L25,140 Q19,143 13,139 Z M28,118 Q34,116 40,118 L41,139 Q35,143 29,140 Z",
+    "Gastrocnemius (Lat)":"M11,120 Q16,118 19,122 L18,140 Q13,143 9,139 Z M35,122 Q38,118 43,120 L45,139 Q41,143 36,140 Z",
+    "Soleus":"M12,134 Q20,132 28,132 L29,148 Q20,150 11,148 Z M28,132 Q36,132 42,134 L43,148 Q35,150 27,148 Z",
+    "Tibialis Anterior":"M11,118 Q15,116 18,120 L17,138 Q13,140 10,137 Z M36,120 Q39,116 43,118 L44,137 Q41,140 37,138 Z",
   };
 
-  // Muscle overlay paths - BACK (offset x+54)
   var AB={
-    "Trap (Upper)":            "M65,29 Q73,24 81,26 Q89,24 97,29 L96,37 Q88,33 81,34 Q74,33 66,37 Z",
-    "Trap (Mid)":              "M66,36 Q74,33 81,34 Q88,33 96,36 L95,50 Q87,53 81,54 Q75,53 67,50 Z",
-    "Lower Trap":              "M67,50 Q74,48 81,49 Q88,48 95,50 L94,60 Q87,63 81,64 Q75,63 68,60 Z",
-    "Rhomboids":               "M70,36 Q76,33 81,34 Q86,33 92,36 L91,50 Q86,52 81,53 Q76,52 71,50 Z",
-    "Lat Dorsi":               "M62,40 Q68,36 72,43 L70,70 Q63,74 57,68 Z M90,43 Q94,36 100,40 L105,68 Q99,74 92,70 Z",
-    "Teres Major":             "M62,36 Q66,32 70,38 L69,50 Q64,53 59,48 Z M92,38 Q96,32 100,36 L103,48 Q98,53 93,50 Z",
-    "Teres Minor":             "M62,32 Q66,28 69,34 L68,42 Q63,44 60,41 Z M93,34 Q96,28 100,32 L102,41 Q99,44 94,42 Z",
-    "Infraspinatus":           "M66,30 Q73,26 81,27 Q89,26 96,30 L95,44 Q87,47 81,48 Q75,47 67,44 Z",
-    "Erector Spinae":          "M77,35 Q79,33 81,35 L80,72 Q78,74 76,72 Z M81,35 Q83,33 85,35 L84,72 Q82,74 81,72 Z",
-    "Post Deltoid":            "M57,30 Q62,26 66,33 L65,45 Q59,48 55,44 Z M96,33 Q100,26 105,30 L107,44 Q103,48 97,45 Z",
-    "Glute Max":               "M65,78 Q73,73 81,75 L80,98 Q71,102 63,97 Z M81,75 Q89,73 97,78 L99,97 Q91,102 82,98 Z",
-    "Glute Med":               "M62,64 Q70,60 78,63 L77,78 Q69,81 61,77 Z M84,63 Q92,60 100,64 L101,77 Q93,81 85,78 Z",
-    "Glute Min":               "M64,67 Q71,63 78,66 L77,77 Q70,79 63,76 Z M84,66 Q91,63 98,67 L99,76 Q92,79 85,77 Z",
-    "TFL":                     "M62,66 Q66,62 69,68 L68,82 Q63,85 60,80 Z M93,68 Q96,62 100,66 L102,80 Q99,85 94,82 Z",
-    "Bicep Femoris (Long)":    "M65,98 Q71,95 77,98 L76,126 Q70,129 63,125 Z M85,98 Q91,95 97,98 L99,125 Q93,129 86,126 Z",
-    "Bicep Femoris (Short)":   "M66,112 Q71,109 76,112 L75,128 Q70,131 65,128 Z M86,112 Q91,109 96,112 L97,128 Q92,131 87,128 Z",
-    "Semimembranosus":         "M74,98 Q78,95 82,98 L81,126 Q77,129 73,126 Z",
-    "Semitendinosus":          "M69,98 Q73,95 77,98 L76,126 Q72,129 68,126 Z",
-    "Tricep Long Head":        "M56,43 Q60,40 64,44 L63,63 Q58,66 54,62 Z M98,44 Q102,40 106,43 L107,62 Q103,66 99,63 Z",
-    "Tricep Lateral Head":     "M53,45 Q57,42 61,46 L60,63 Q55,66 52,62 Z M101,46 Q105,42 109,45 L110,62 Q106,66 102,63 Z",
-    "Tricep Medial Head":      "M56,52 Q59,50 62,53 L61,63 Q58,65 55,62 Z M100,53 Q103,50 106,52 L107,62 Q104,65 101,63 Z",
-    "Supraspinatus":           "M67,27 Q74,23 81,24 Q88,23 95,27 L94,35 Q87,31 81,32 Q75,31 68,35 Z",
-    "Levator Scapulae":        "M66,24 Q69,21 72,26 L71,35 Q68,37 65,34 Z M90,26 Q93,21 96,24 L97,34 Q94,37 91,35 Z",
-    "Ext Carpi Ulnaris":       "M52,61 Q56,58 60,62 L59,77 Q55,79 51,76 Z M102,62 Q106,58 110,61 L111,76 Q107,79 103,77 Z",
+    "Trap (Upper)":"M65,29 Q73,24 81,26 Q89,24 97,29 L96,37 Q88,33 81,34 Q74,33 66,37 Z",
+    "Trap (Mid)":"M66,36 Q74,33 81,34 Q88,33 96,36 L95,50 Q87,53 81,54 Q75,53 67,50 Z",
+    "Lower Trap":"M67,50 Q74,48 81,49 Q88,48 95,50 L94,60 Q87,63 81,64 Q75,63 68,60 Z",
+    "Rhomboids":"M70,36 Q76,33 81,34 Q86,33 92,36 L91,50 Q86,52 81,53 Q76,52 71,50 Z",
+    "Lat Dorsi":"M62,40 Q68,36 72,43 L70,70 Q63,74 57,68 Z M90,43 Q94,36 100,40 L105,68 Q99,74 92,70 Z",
+    "Teres Major":"M62,36 Q66,32 70,38 L69,50 Q64,53 59,48 Z M92,38 Q96,32 100,36 L103,48 Q98,53 93,50 Z",
+    "Teres Minor":"M62,32 Q66,28 69,34 L68,42 Q63,44 60,41 Z M93,34 Q96,28 100,32 L102,41 Q99,44 94,42 Z",
+    "Infraspinatus":"M66,30 Q73,26 81,27 Q89,26 96,30 L95,44 Q87,47 81,48 Q75,47 67,44 Z",
+    "Erector Spinae":"M77,35 Q79,33 81,35 L80,72 Q78,74 76,72 Z M81,35 Q83,33 85,35 L84,72 Q82,74 81,72 Z",
+    "Post Deltoid":"M57,30 Q62,26 66,33 L65,45 Q59,48 55,44 Z M96,33 Q100,26 105,30 L107,44 Q103,48 97,45 Z",
+    "Glute Max":"M65,78 Q73,73 81,75 L80,98 Q71,102 63,97 Z M81,75 Q89,73 97,78 L99,97 Q91,102 82,98 Z",
+    "Glute Med":"M62,64 Q70,60 78,63 L77,78 Q69,81 61,77 Z M84,63 Q92,60 100,64 L101,77 Q93,81 85,78 Z",
+    "Glute Min":"M64,67 Q71,63 78,66 L77,77 Q70,79 63,76 Z M84,66 Q91,63 98,67 L99,76 Q92,79 85,77 Z",
+    "TFL":"M62,66 Q66,62 69,68 L68,82 Q63,85 60,80 Z M93,68 Q96,62 100,66 L102,80 Q99,85 94,82 Z",
+    "Bicep Femoris (Long)":"M65,98 Q71,95 77,98 L76,126 Q70,129 63,125 Z M85,98 Q91,95 97,98 L99,125 Q93,129 86,126 Z",
+    "Bicep Femoris (Short)":"M66,112 Q71,109 76,112 L75,128 Q70,131 65,128 Z M86,112 Q91,109 96,112 L97,128 Q92,131 87,128 Z",
+    "Semimembranosus":"M74,98 Q78,95 82,98 L81,126 Q77,129 73,126 Z",
+    "Semitendinosus":"M69,98 Q73,95 77,98 L76,126 Q72,129 68,126 Z",
+    "Tricep Long Head":"M56,43 Q60,40 64,44 L63,63 Q58,66 54,62 Z M98,44 Q102,40 106,43 L107,62 Q103,66 99,63 Z",
+    "Tricep Lateral Head":"M53,45 Q57,42 61,46 L60,63 Q55,66 52,62 Z M101,46 Q105,42 109,45 L110,62 Q106,66 102,63 Z",
+    "Tricep Medial Head":"M56,52 Q59,50 62,53 L61,63 Q58,65 55,62 Z M100,53 Q103,50 106,52 L107,62 Q104,65 101,63 Z",
+    "Supraspinatus":"M67,27 Q74,23 81,24 Q88,23 95,27 L94,35 Q87,31 81,32 Q75,31 68,35 Z",
+    "Levator Scapulae":"M66,24 Q69,21 72,26 L71,35 Q68,37 65,34 Z M90,26 Q93,21 96,24 L97,34 Q94,37 91,35 Z",
+    "Ext Carpi Ulnaris":"M52,61 Q56,58 60,62 L59,77 Q55,79 51,76 Z M102,62 Q106,58 110,61 L111,76 Q107,79 103,77 Z",
     "Gastrocnemius (Med)_back":"M74,134 Q78,132 82,134 L81,150 Q77,153 73,150 Z",
     "Gastrocnemius (Lat)_back":"M68,134 Q72,132 75,134 L74,150 Q70,153 67,150 Z M83,134 Q86,132 90,134 L89,150 Q86,153 82,150 Z",
-    "Soleus_back":             "M67,144 Q74,142 81,143 Q88,142 95,144 L94,153 Q87,155 81,156 Q75,155 68,153 Z",
+    "Soleus_back":"M67,144 Q74,142 81,143 Q88,142 95,144 L94,153 Q87,155 81,156 Q75,155 68,153 Z",
   };
 
-  var rm=function(isBack){
-    return muscles.map(function(m){
-      var isBM=BACK_VIEW_MUSCLES.has(m);
-      if(isBack&&!isBM)return null;
-      if(!isBack&&isBM)return null;
-      var pd=isBack?(AB[m]||AB[m+"_back"]):(AF[m]);
-      if(!pd)return null;
-      var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
-      var op=0.55+(pct/100)*0.4+(isPrimary?pulse*0.25:0);
-      var glowColor=isPrimary?col:"none";
-      return(<g key={m}>
-        {isPrimary&&<path d={pd} fill={col} opacity={0.25+Math.abs(pulse)*0.3} style={{opacity:0.4}}/>}
-        <path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth={isPrimary?"0.5":"0"} strokeOpacity="0.4"/>
-        {isPrimary&&<path d={pd} fill="none" stroke={col} strokeWidth="0.8" strokeOpacity="0.7"/>}
-      </g>);
-    });
-  };
+  var rmFront=muscles.map(function(m){
+    if(BACK_VIEW_MUSCLES.has(m))return null;
+    var pd=AF[m];if(!pd)return null;
+    var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
+    var op=0.55+(pct/100)*0.4+(isPrimary?pulse*0.25:0);
+    return(<g key={m}>
+      {isPrimary&&<path d={pd} fill={col} opacity={0.3} style={{opacity:0.4}}/>}
+      <path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth={isPrimary?"0.5":"0"} strokeOpacity="0.4"/>
+      {isPrimary&&<path d={pd} fill="none" stroke={col} strokeWidth="0.8" strokeOpacity="0.7"/>}
+    </g>);
+  });
+
+  var rmBack=muscles.map(function(m){
+    if(!BACK_VIEW_MUSCLES.has(m))return null;
+    var pd=AB[m]||AB[m+"_back"];if(!pd)return null;
+    var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30;
+    var op=0.55+(pct/100)*0.4+(isPrimary?pulse*0.25:0);
+    return(<g key={m}>
+      {isPrimary&&<path d={pd} fill={col} opacity={0.3} style={{opacity:0.4}}/>}
+      <path d={pd} fill={col} opacity={op} stroke={isPrimary?"#fff":"none"} strokeWidth={isPrimary?"0.5":"0"} strokeOpacity="0.4"/>
+      {isPrimary&&<path d={pd} fill="none" stroke={col} strokeWidth="0.8" strokeOpacity="0.7"/>}
+    </g>);
+  });
 
   return(
     <div style={{background:"linear-gradient(160deg,#0e0e18,#070710)",borderRadius:16,padding:"16px",marginBottom:10,border:"1px solid #1e1e2a",boxShadow:"0 8px 32px rgba(0,0,0,0.6)"}}>
       <div style={{fontSize:9,color:"#555",letterSpacing:1.5,marginBottom:12,textAlign:"center"}}>MUSCLE ACTIVATION</div>
       <div style={{display:"flex",justifyContent:"center",gap:20,marginBottom:14}}>
-        {[["FRONT",false],["BACK",true]].map(function(side){
-          return(<div key={side[0]} style={{textAlign:"center"}}>
-            <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>{side[0]}</div>
-            <svg viewBox={side[1]?"54 0 54 155":"0 0 54 155"} width="88" height="235" style={{overflow:"visible",filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.8))"}}>
-              <defs>
-                <linearGradient id={"bgl"+side[0]} x1={side[1]?"80%":"20%"} y1="0%" x2={side[1]?"20%":"80%"} y2="100%">
-                  <stop offset="0%" stopColor="#fff" stopOpacity="0.12"/>
-                  <stop offset="100%" stopColor="#000" stopOpacity="0.25"/>
-                </linearGradient>
-              </defs>
-              {(side[1]?BACK_BODY:FRONT_BODY).map(function(p,i){
-                return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.35" strokeOpacity="0.5"/>;
-              })}
-              {(side[1]?BACK_BODY:FRONT_BODY).map(function(p,i){
-                return <path key={"l"+i} d={p.d} fill={"url(#bgl"+side[0]+")"} opacity="0.6"/>;
-              })}
-              {rm(side[1])}
-            </svg>
-          </div>);
-        })}
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>FRONT</div>
+          <svg viewBox="0 0 54 155" width="88" height="235" style={{overflow:"visible",filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.8))"}}>
+            <defs><linearGradient id="bglF" x1="20%" y1="0%" x2="80%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.12"/><stop offset="100%" stopColor="#000" stopOpacity="0.25"/></linearGradient></defs>
+            {FRONT_BODY.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.35" strokeOpacity="0.5"/>;}) }
+            {FRONT_BODY.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bglF)" opacity="0.6"/>;}) }
+            {rmFront}
+          </svg>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:8,color:"#555",marginBottom:5,letterSpacing:1,fontWeight:700}}>BACK</div>
+          <svg viewBox="54 0 54 155" width="88" height="235" style={{overflow:"visible",filter:"drop-shadow(0 4px 16px rgba(0,0,0,0.8))"}}>
+            <defs><linearGradient id="bglB" x1="80%" y1="0%" x2="20%" y2="100%"><stop offset="0%" stopColor="#fff" stopOpacity="0.12"/><stop offset="100%" stopColor="#000" stopOpacity="0.25"/></linearGradient></defs>
+            {BACK_BODY.map(function(p,i){return <path key={i} d={p.d} fill={p.f} stroke="#7a4a28" strokeWidth="0.35" strokeOpacity="0.5"/>;}) }
+            {BACK_BODY.map(function(p,i){return <path key={"l"+i} d={p.d} fill="url(#bglB)" opacity="0.6"/>;}) }
+            {rmBack}
+          </svg>
+        </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         {muscles.map(function(m){
           var pct=acts[m],col=MUSCLE_COLOR[m]||GC,isPrimary=pct>=30,isSec=pct>=15&&pct<30;
-          return(<div key={m}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:9,height:9,borderRadius:3,background:col,boxShadow:isPrimary?"0 0 8px "+col+"cc":"none",flexShrink:0}}/>
-                <span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>
-                {isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"55"}}>PRIMARY</span>}
-                {isSec&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px"}}>SECONDARY</span>}
-              </div>
-              <span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span>
-            </div>
-            <div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden"}}>
-              <div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s ease",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/>
-            </div>
-          </div>);
+          return(<div key={m}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:9,height:9,borderRadius:3,background:col,boxShadow:isPrimary?"0 0 8px "+col+"cc":"none",flexShrink:0}}/><span style={{fontSize:11,color:isPrimary?"#e8e4dc":"#888",fontWeight:isPrimary?"700":"400"}}>{m}</span>{isPrimary&&<span style={{fontSize:7,background:col+"22",color:col,borderRadius:4,padding:"1px 5px",fontWeight:700,border:"1px solid "+col+"55"}}>PRIMARY</span>}{isSec&&<span style={{fontSize:7,background:"#1e1e2a",color:"#666",borderRadius:4,padding:"1px 5px"}}>SECONDARY</span>}</div><span style={{fontSize:11,fontWeight:700,color:col}}>{pct}%</span></div><div style={{background:"#0d0d15",borderRadius:99,height:6,overflow:"hidden"}}><div style={{height:"100%",borderRadius:99,background:"linear-gradient(90deg,"+col+"88,"+col+")",width:pct+"%",transition:"width .6s ease",boxShadow:isPrimary?"0 0 8px "+col+"66":"none"}}/></div></div>);
         })}
       </div>
-      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}>
-        <div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC,flexShrink:0}}/>
-        <div style={{fontSize:10,color:GC}}><strong>Primary:</strong> {primaryMuscles.join(" \u00b7 ")}</div>
-      </div>)}
+      {primaryMuscles.length>0&&(<div style={{marginTop:12,padding:"8px 11px",background:GC+"0a",border:"1px solid "+GC+"22",borderRadius:9,display:"flex",gap:6,alignItems:"center"}}><div style={{width:6,height:6,borderRadius:3,background:GC,boxShadow:"0 0 8px "+GC,flexShrink:0}}/><div style={{fontSize:10,color:GC}}><strong>Primary:</strong> {primaryMuscles.join(" \u00b7 ")}</div></div>)}
     </div>
   );
 }
-
 
 function ExerciseAnimation({exerciseName,color}){
   var anim=EX_ANIMS[exerciseName]||DEFAULT_ANIM;
