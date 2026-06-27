@@ -1188,7 +1188,7 @@ export default function App({user,supabase}){
   var[calGoal,setCalGoal]=useState(2000);
   var[macros,setMacros]=useState({protein:150,carbs:200,fat:65});
   var[macLocked,setMacLocked]=useState(false);
-  var[profile,setProfile]=useState({name:"",age:"",sex:"male",wLbs:"",hFt:"",hIn:"",activ:"moderate",bio:"",avatar:0});
+  var[profile,setProfile]=useState({name:"",age:"",sex:"male",wLbs:"",hFt:"",hIn:"",activ:"moderate",bio:"",avatar:0,experience:"beginner",commitment:"moderate",workoutType:"gym"});
   var[showEx,setShowEx]=useState(false);
   var[exTab,setExTab]=useState("log");
   var[selEx,setSelEx]=useState(null);
@@ -1306,7 +1306,7 @@ export default function App({user,supabase}){
         if(attempt<2)await new Promise(function(r){setTimeout(r,600);});
       }
       if(p){
-        var prof={name:p.display_name||p.username||"",age:p.age||"",sex:p.sex||"male",wLbs:p.weight_lbs||"",hFt:p.height_ft||"",hIn:p.height_in||"",activ:p.activity_level||"moderate",bio:p.bio||"",avatar:p.avatar_index||0};
+        var prof={name:p.display_name||p.username||"",age:p.age||"",sex:p.sex||"male",wLbs:p.weight_lbs||"",hFt:p.height_ft||"",hIn:p.height_in||"",activ:p.activity_level||"moderate",bio:p.bio||"",avatar:p.avatar_index||0,experience:p.experience||"beginner",commitment:p.commitment||"moderate",workoutType:p.workout_type||"gym"};
         setProfile(prof);
         if(p.goal)setGoal(p.goal);
         if(p.cal_goal)setCalGoal(p.cal_goal);
@@ -1725,6 +1725,9 @@ export default function App({user,supabase}){
       ["macro_protein", macVal.protein],
       ["macro_carbs", macVal.carbs],
       ["macro_fat", macVal.fat],
+      ["experience", p.experience||"beginner"],
+      ["commitment", p.commitment||"moderate"],
+      ["workout_type", p.workoutType||"gym"],
     ];
     for(var i=0;i<fields.length;i++){
       var row={};
@@ -2397,6 +2400,33 @@ export default function App({user,supabase}){
           </div>
           <div style={{fontSize:11,color:"#555"}}>ACTIVITY LEVEL</div>
           {ACTIVITY.map(function(a){return <button key={a.id} onClick={()=>setProfile(Object.assign({},profile,{activ:a.id}))} style={{padding:"9px 13px",borderRadius:9,border:"1px solid "+(profile.activ===a.id?GC:"#2a2a3a"),background:profile.activ===a.id?"#151e12":"#13131a",color:profile.activ===a.id?GC:"#888",cursor:"pointer",fontFamily:"inherit",fontWeight:600,fontSize:13,textAlign:"left"}}>{a.label}</button>;})}
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>LIFTING EXPERIENCE</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[["beginner","Complete Beginner","Never worked out consistently"],["some","Some Experience","1-2 years on and off"],["intermediate","Intermediate","2-4 years consistent"],["advanced","Advanced","4+ years, knows what they're doing"]].map(function(e){return(
+              <button key={e[0]} onClick={()=>setProfile(Object.assign({},profile,{experience:e[0]}))} style={{padding:"9px 13px",borderRadius:9,border:"1px solid "+(profile.experience===e[0]?GC:"#2a2a3a"),background:profile.experience===e[0]?"#151e12":"#13131a",color:profile.experience===e[0]?GC:"#888",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                <div style={{fontWeight:600,fontSize:13,color:profile.experience===e[0]?GC:"#e8e4dc"}}>{e[1]}</div>
+                <div style={{fontSize:10,color:"#555",marginTop:1}}>{e[2]}</div>
+              </button>
+            );})}
+          </div>
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>WORKOUT FREQUENCY</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[["casual","Casual","1-2x per week"],["moderate","Moderate","3-4x per week"],["serious","Serious","5+ times per week"]].map(function(c){return(
+              <button key={c[0]} onClick={()=>setProfile(Object.assign({},profile,{commitment:c[0]}))} style={{padding:"9px 13px",borderRadius:9,border:"1px solid "+(profile.commitment===c[0]?GC:"#2a2a3a"),background:profile.commitment===c[0]?"#151e12":"#13131a",color:profile.commitment===c[0]?GC:"#888",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                <div style={{fontWeight:600,fontSize:13,color:profile.commitment===c[0]?GC:"#e8e4dc"}}>{c[1]}</div>
+                <div style={{fontSize:10,color:"#555",marginTop:1}}>{c[2]}</div>
+              </button>
+            );})}
+          </div>
+          <div style={{fontSize:11,color:"#555",marginTop:4}}>WORKOUT PREFERENCE</div>
+          <div style={{display:"flex",gap:7}}>
+            {[["gym","Gym","&#127947;"],["home","Home","&#127968;"],["outdoor","Outdoor","&#127981;"]].map(function(w){return(
+              <button key={w[0]} onClick={()=>setProfile(Object.assign({},profile,{workoutType:w[0]}))} style={{flex:1,padding:"9px 8px",borderRadius:9,border:"1px solid "+(profile.workoutType===w[0]?GC:"#2a2a3a"),background:profile.workoutType===w[0]?"#151e12":"#13131a",cursor:"pointer",fontFamily:"inherit",textAlign:"center"}}>
+                <div style={{fontSize:18}} dangerouslySetInnerHTML={{__html:w[2]}}/>
+                <div style={{fontSize:12,fontWeight:600,color:profile.workoutType===w[0]?GC:"#888",marginTop:3}}>{w[1]}</div>
+              </button>
+            );})}
+          </div>
           {tdee>0&&(<div className="card" style={{borderColor:GC+"44"}}>
             <div style={{fontSize:10,color:"#555",marginBottom:8}}>YOUR ESTIMATED NEEDS</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:10}}>
@@ -2878,6 +2908,8 @@ export default function App({user,supabase}){
                     <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4,flexWrap:"wrap"}}>
                       <span style={{fontSize:9,background:getGoalColor(u.goal)+"22",color:getGoalColor(u.goal),borderRadius:99,padding:"2px 7px",fontWeight:700}}>{getGoalLabel(u.goal)}</span>
                       <span style={{fontSize:9,background:getLevelInfo(u.xp||0).color+"22",color:getLevelInfo(u.xp||0).color,borderRadius:99,padding:"2px 7px",fontWeight:700}}>{getLevelInfo(u.xp||0).title}</span>
+                      {u.experience&&<span style={{fontSize:9,background:"#1e1e2a",color:"#aaa",borderRadius:99,padding:"2px 7px"}}>{u.experience==="beginner"?"Beginner":u.experience==="some"?"Some Exp":u.experience==="intermediate"?"Intermediate":"Advanced"}</span>}
+                      {u.commitment&&<span style={{fontSize:9,background:"#1e1e2a",color:"#aaa",borderRadius:99,padding:"2px 7px"}}>{u.commitment==="casual"?"Casual":u.commitment==="serious"?"Serious":"Moderate"}</span>}
                       {(u.streak||0)>0&&<span style={{fontSize:9,color:"#ff6b35"}}>🔥{u.streak}</span>}
                     </div>
                   </div>
