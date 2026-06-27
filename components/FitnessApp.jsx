@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase as sbClient } from "../lib/supabase";
+import MuscleDiagramNew from "./MuscleDiagram";
 
 var EM = {
   run:"\uD83C\uDFC3",bike:"\uD83D\uDEB4",swim:"\uD83C\uDFCA",lift:"\uD83C\uDFCB",
@@ -2667,7 +2668,7 @@ export default function App({user,supabase}){
                   {[["REST",ex.rest],["WEIGHT",ex.weight]].map(function(x){return <div key={x[0]} style={{background:"#0a0a0f",borderRadius:7,padding:"5px 8px"}}><div style={{fontSize:8,color:"#555"}}>{x[0]}</div><div style={{fontSize:11,fontWeight:600}}>{x[1]}</div></div>;})}
                 </div>
                 <ExerciseAnimation exerciseName={ex.name} color={GC}/>
-                <MuscleDiagram exerciseName={ex.name} color={GC}/>
+                <MuscleDiagramNew exerciseName={ex.name} color={GC}/>
                 <div style={{background:GC+"11",borderRadius:7,padding:"5px 8px",fontSize:10,color:GC}}>Tip: {ex.tip}</div>
               </div>
             );})}
