@@ -1896,9 +1896,130 @@ export default function App({user,supabase}){
     return sizes.slice(0,5);
   }
 
+  var RESTAURANT_MENUS={
+    "chickfila":[
+      {name:"Chick-fil-A Sandwich",calories:470,protein:29,carbs:41,fat:19,per:"sandwich"},
+      {name:"Spicy Deluxe Sandwich",calories:550,protein:33,carbs:43,fat:25,per:"sandwich"},
+      {name:"Grilled Chicken Sandwich",calories:390,protein:37,carbs:40,fat:7,per:"sandwich"},
+      {name:"Nuggets 8pc",calories:250,protein:27,carbs:11,fat:11,per:"8pc"},
+      {name:"Nuggets 12pc",calories:380,protein:40,carbs:17,fat:17,per:"12pc"},
+      {name:"Grilled Nuggets 8pc",calories:130,protein:25,carbs:2,fat:3,per:"8pc"},
+      {name:"Grilled Nuggets 12pc",calories:200,protein:38,carbs:3,fat:4,per:"12pc"},
+      {name:"Waffle Fries Medium",calories:420,protein:5,carbs:50,fat:22,per:"medium"},
+      {name:"Waffle Fries Large",calories:530,protein:6,carbs:63,fat:28,per:"large"},
+      {name:"Mac & Cheese Medium",calories:440,protein:16,carbs:36,fat:27,per:"medium"},
+      {name:"Grilled Cool Wrap",calories:350,protein:37,carbs:29,fat:8,per:"wrap"},
+      {name:"Cobb Salad",calories:510,protein:40,carbs:22,fat:29,per:"salad"},
+      {name:"Fruit Cup",calories:60,protein:1,carbs:15,fat:0,per:"cup"},
+      {name:"Chocolate Chunk Cookie",calories:370,protein:4,carbs:50,fat:18,per:"cookie"},
+      {name:"Vanilla Milkshake Medium",calories:590,protein:14,carbs:84,fat:23,per:"medium"},
+      {name:"Lemonade Medium",calories:200,protein:0,carbs:52,fat:0,per:"medium"},
+    ],
+    "mcdonalds":[
+      {name:"Big Mac",calories:590,protein:25,carbs:46,fat:34,per:"burger"},
+      {name:"Quarter Pounder with Cheese",calories:740,protein:44,carbs:43,fat:44,per:"burger"},
+      {name:"McDouble",calories:400,protein:24,carbs:35,fat:19,per:"burger"},
+      {name:"Crispy Chicken Sandwich",calories:530,protein:27,carbs:53,fat:24,per:"sandwich"},
+      {name:"10pc McNuggets",calories:400,protein:23,carbs:24,fat:24,per:"10pc"},
+      {name:"6pc McNuggets",calories:250,protein:14,carbs:15,fat:15,per:"6pc"},
+      {name:"Medium Fries",calories:320,protein:4,carbs:44,fat:15,per:"medium"},
+      {name:"Large Fries",calories:490,protein:7,carbs:66,fat:23,per:"large"},
+      {name:"Egg McMuffin",calories:310,protein:17,carbs:30,fat:13,per:"sandwich"},
+      {name:"Sausage McMuffin with Egg",calories:480,protein:21,carbs:30,fat:30,per:"sandwich"},
+      {name:"McFlurry Oreo",calories:510,protein:13,carbs:80,fat:17,per:"regular"},
+      {name:"Medium Coke",calories:200,protein:0,carbs:54,fat:0,per:"medium"},
+    ],
+    "chipotle":[
+      {name:"Chicken Burrito Bowl",calories:665,protein:51,carbs:52,fat:23,per:"bowl"},
+      {name:"Steak Burrito Bowl",calories:690,protein:46,carbs:52,fat:26,per:"bowl"},
+      {name:"Chicken Burrito",calories:855,protein:53,carbs:89,fat:24,per:"burrito"},
+      {name:"Steak Burrito",calories:880,protein:48,carbs:89,fat:27,per:"burrito"},
+      {name:"Chicken Tacos 3pc",calories:525,protein:40,carbs:48,fat:17,per:"3 tacos"},
+      {name:"Chips & Guacamole",calories:770,protein:9,carbs:84,fat:46,per:"order"},
+      {name:"Chicken Salad Bowl",calories:500,protein:48,carbs:23,fat:22,per:"bowl"},
+      {name:"Sofritas Bowl",calories:580,protein:23,carbs:58,fat:25,per:"bowl"},
+      {name:"White Rice",calories:210,protein:4,carbs:40,fat:3,per:"serving"},
+      {name:"Black Beans",calories:130,protein:8,carbs:22,fat:1,per:"serving"},
+      {name:"Guacamole",calories:230,protein:3,carbs:12,fat:21,per:"serving"},
+    ],
+    "subway":[
+      {name:"6in Chicken Teriyaki",calories:370,protein:26,carbs:53,fat:5,per:"6 inch"},
+      {name:"Footlong Chicken Teriyaki",calories:740,protein:52,carbs:106,fat:10,per:"footlong"},
+      {name:"6in Turkey Breast",calories:280,protein:21,carbs:40,fat:3,per:"6 inch"},
+      {name:"Footlong Turkey Breast",calories:560,protein:42,carbs:80,fat:6,per:"footlong"},
+      {name:"6in Tuna",calories:480,protein:22,carbs:40,fat:25,per:"6 inch"},
+      {name:"6in Steak & Cheese",calories:380,protein:27,carbs:41,fat:10,per:"6 inch"},
+      {name:"6in Veggie Delite",calories:200,protein:9,carbs:39,fat:2,per:"6 inch"},
+      {name:"Footlong BMT",calories:810,protein:44,carbs:72,fat:38,per:"footlong"},
+    ],
+    "starbucks":[
+      {name:"Caffe Latte Grande",calories:190,protein:13,carbs:19,fat:7,per:"grande"},
+      {name:"Iced Brown Sugar Oat Latte Grande",calories:270,protein:7,carbs:38,fat:11,per:"grande"},
+      {name:"Mocha Frappuccino Grande",calories:410,protein:5,carbs:61,fat:16,per:"grande"},
+      {name:"Caramel Macchiato Grande",calories:250,protein:10,carbs:35,fat:7,per:"grande"},
+      {name:"Cold Brew Grande",calories:5,protein:0,carbs:0,fat:0,per:"grande"},
+      {name:"Vanilla Latte Grande",calories:250,protein:12,carbs:35,fat:6,per:"grande"},
+      {name:"Egg & Cheese Sandwich",calories:350,protein:19,carbs:34,fat:15,per:"sandwich"},
+      {name:"Impossible Breakfast Sandwich",calories:420,protein:24,carbs:45,fat:15,per:"sandwich"},
+      {name:"Cheese Danish",calories:290,protein:5,carbs:32,fat:16,per:"piece"},
+      {name:"Chocolate Croissant",calories:370,protein:7,carbs:44,fat:19,per:"piece"},
+    ],
+    "panera":[
+      {name:"Broccoli Cheddar Soup Bowl",calories:360,protein:14,carbs:32,fat:20,per:"bowl"},
+      {name:"Chicken Noodle Soup Bowl",calories:170,protein:13,carbs:22,fat:3,per:"bowl"},
+      {name:"Turkey Sandwich",calories:540,protein:32,carbs:60,fat:19,per:"sandwich"},
+      {name:"Fuji Apple Chicken Salad",calories:570,protein:33,carbs:48,fat:27,per:"full"},
+      {name:"Mac & Cheese Bowl",calories:500,protein:19,carbs:66,fat:18,per:"bowl"},
+      {name:"Bagel with Cream Cheese",calories:470,protein:14,carbs:68,fat:16,per:"bagel"},
+      {name:"Chicken Caesar Salad",calories:480,protein:35,carbs:18,fat:31,per:"full"},
+    ],
+    "dominos":[
+      {name:"Pepperoni Pizza 2 slices",calories:530,protein:22,carbs:54,fat:25,per:"2 slices"},
+      {name:"Cheese Pizza 2 slices",calories:460,protein:20,carbs:56,fat:17,per:"2 slices"},
+      {name:"Buffalo Chicken Pizza 2 slices",calories:490,protein:24,carbs:52,fat:20,per:"2 slices"},
+      {name:"Chicken Wings 6pc",calories:430,protein:42,carbs:4,fat:27,per:"6pc"},
+      {name:"Stuffed Cheesy Bread",calories:370,protein:15,carbs:43,fat:16,per:"2 pieces"},
+      {name:"Pasta Chicken Alfredo",calories:680,protein:34,carbs:72,fat:28,per:"bowl"},
+    ],
+    "chickfila":[], // alias handled below
+  };
+
   async function searchFoods(q){
     if(!q||q.length<2){setFoodSearchResults([]);return;}
     setFoodSearchLoading(true);
+
+    // Check for restaurant match first
+    var qClean=q.toLowerCase().replace(/[^a-z0-9]/g,"");
+    var restaurantAliases={
+      "chickfila":["chickfila","chickfil","chick","cfa"],
+      "mcdonalds":["mcdonalds","mcdonald","mcd","mcds"],
+      "chipotle":["chipotle","chipot"],
+      "subway":["subway"],
+      "starbucks":["starbucks","sbux","starb"],
+      "panera":["panera","panerabread"],
+      "dominos":["dominos","dominospizza","domino"],
+    };
+    var matchedKey=null;
+    Object.keys(restaurantAliases).forEach(function(key){
+      restaurantAliases[key].forEach(function(alias){
+        if(qClean.includes(alias)||alias.includes(qClean))matchedKey=key;
+      });
+    });
+    if(matchedKey&&RESTAURANT_MENUS[matchedKey]&&RESTAURANT_MENUS[matchedKey].length>0){
+      var menuItems=RESTAURANT_MENUS[matchedKey].map(function(item){
+        return{
+          id:item.name,name:item.name,
+          brand:matchedKey==="chickfila"?"Chick-fil-A":matchedKey.charAt(0).toUpperCase()+matchedKey.slice(1),
+          calories:item.calories,protein:item.protein,carbs:item.carbs,fat:item.fat,
+          cal100:item.calories,protein100:item.protein,carbs100:item.carbs,fat100:item.fat,
+          per:item.per,servingGrams:null,servingLabel:item.per,em:EM.plate,
+        };
+      });
+      setFoodSearchResults(menuItems);
+      setFoodSearchLoading(false);
+      return;
+    }
+
     try{
       // Search with more results and better fields
       var url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=24&fields=product_name,brands,nutriments,serving_size,image_front_small_url,_id,countries_tags,popularity_key";
@@ -2462,6 +2583,8 @@ export default function App({user,supabase}){
           </div>)}
           <button className="btn" onClick={()=>{saveProfile(profile,goal,calGoal,macros);setScreen("main");}} style={{background:GC,color:"#0a0a0f"}}>Save Profile</button>
           <button className="btn" onClick={()=>setScreen("main")} style={{background:"#1e1e2a",color:"#e8e4dc",border:"1px solid #2a2a3a"}}>Cancel</button>
+          <button className="btn" onClick={async function(){if(!window.confirm("Sign out of Lock In?"))return;await (supabase||sbClient).auth.signOut();router.replace("/auth");}} style={{background:"transparent",color:"#888",border:"1px solid #2a2a3a"}}>Sign Out</button>
+          <button className="btn" onClick={async function(){if(!window.confirm("Permanently delete your account? This cannot be undone."))return;try{await (supabase||sbClient).rpc("delete_user");await (supabase||sbClient).auth.signOut();router.replace("/auth");}catch(e){alert("Error: "+e.message);}}} style={{background:"transparent",color:"#ff6666",border:"1px solid #ff444433"}}>Delete Account</button>
           <a href="/privacy-policy.html" target="_blank" style={{textAlign:"center",fontSize:11,color:"#555",display:"block",marginTop:4,textDecoration:"none"}}>Privacy Policy</a>
         </div>
       </div>
