@@ -1222,7 +1222,8 @@ export default function App({user,supabase}){
   var[foodSearchLoading,setFoodSearchLoading]=useState(false);
   var[selSearchFood,setSelSearchFood]=useState(null);
   var[searchGrams,setSearchGrams]=useState(100);
-  var[searchUnit,setSearchUnit]=useState("g");
+  var[searchUnit,setSearchUnit]=useState("serving");
+  var searchDebounceRef=useRef(null);
   var[mealType,setMealType]=useState("other");
   var[recentFoods,setRecentFoods]=useState([]);
   var[quickAddCal,setQuickAddCal]=useState("");
@@ -1851,7 +1852,7 @@ export default function App({user,supabase}){
     setShowFood(false);setFoodTab("browse");setSelFood(null);setFoodSrv(1);
     setCustFood({name:"",cal:0,p:0,c:0,f:0});setBarState("idle");setBarResult(null);
     setBarInput("");setBarSrv(1);setFoodSearch("");setFoodSearchResults([]);
-    setSelSearchFood(null);setSearchGrams(100);setSearchUnit("g");setMealType("other");
+    setSelSearchFood(null);setSearchGrams(100);setSearchUnit("serving");setMealType("other");
     setQuickAddCal("");setQuickAddName("");setQuickAddP("");setSearchServingSize(null);
   }
 
@@ -1908,7 +1909,6 @@ export default function App({user,supabase}){
         var n=p.nutriments||{};
         var cal=Math.round(n["energy-kcal_100g"]||0);
         var name=p.product_name||"";
-        // Score for ranking: exact name match > starts with > contains, US products > others
         var score=0;
         var nl=name.toLowerCase();
         if(nl===ql)score+=100;
@@ -1916,13 +1916,24 @@ export default function App({user,supabase}){
         else if(nl.includes(ql))score+=30;
         if(p.countries_tags&&p.countries_tags.includes("en:united-states"))score+=20;
         if(p.popularity_key)score+=Math.min(p.popularity_key/1000000,10);
-        // Penalize very generic/incomplete entries
         if(!n["proteins_100g"]&&!n["carbohydrates_100g"])score-=20;
+        // Parse serving size from API
+        var servingStr=p.serving_size||"";
+        var servingGrams=null;
+        var servingMatch=servingStr.match(/([\d.]+)\s*g/i);
+        if(servingMatch)servingGrams=parseFloat(servingMatch[1]);
+        var calServing=servingGrams?Math.round(n["energy-kcal_serving"]||n["energy-kcal_100g"]*(servingGrams/100)||0):null;
+        var pServing=servingGrams?Math.round((n["proteins_serving"]||n["proteins_100g"]*(servingGrams/100)||0)*10)/10:null;
+        var cServing=servingGrams?Math.round((n["carbohydrates_serving"]||n["carbohydrates_100g"]*(servingGrams/100)||0)*10)/10:null;
+        var fServing=servingGrams?Math.round((n["fat_serving"]||n["fat_100g"]*(servingGrams/100)||0)*10)/10:null;
         return{id:p._id,name:name,brand:p.brands||"",image:p.image_front_small_url||null,
           cal100:cal,
           protein100:Math.round((n["proteins_100g"]||0)*10)/10,
           carbs100:Math.round((n["carbohydrates_100g"]||0)*10)/10,
           fat100:Math.round((n["fat_100g"]||0)*10)/10,
+          servingGrams:servingGrams,
+          servingLabel:servingStr||"1 serving",
+          calServing:calServing,pServing:pServing,cServing:cServing,fServing:fServing,
           score:score};
       }).filter(function(p){return p.cal100>0;})
         .sort(function(a,b){return b.score-a.score;})
@@ -1933,7 +1944,17 @@ export default function App({user,supabase}){
   }
 
   function calcSearchMacros(food,grams,unit){
-    var g=unit==="oz"?grams*28.3495:grams;
+    // If serving unit and food has serving data, use it directly
+    if(unit==="serving"&&food.servingGrams){
+      var ratio2=grams; // grams = number of servings in serving mode
+      return{
+        cal:Math.round((food.calServing||food.cal100*(food.servingGrams/100))*ratio2),
+        protein:Math.round((food.pServing||food.protein100*(food.servingGrams/100))*ratio2*10)/10,
+        carbs:Math.round((food.cServing||food.carbs100*(food.servingGrams/100))*ratio2*10)/10,
+        fat:Math.round((food.fServing||food.fat100*(food.servingGrams/100))*ratio2*10)/10,
+      };
+    }
+    var g=unit==="oz"?grams*28.3495:unit==="serving"?grams*100:grams;
     var ratio=g/100;
     return{cal:Math.round(food.cal100*ratio),protein:Math.round(food.protein100*ratio*10)/10,
       carbs:Math.round(food.carbs100*ratio*10)/10,fat:Math.round(food.fat100*ratio*10)/10};
@@ -3064,10 +3085,20 @@ export default function App({user,supabase}){
           {foodTab==="search"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div style={{display:"flex",gap:8}}>
               <input className="inp" placeholder="Search any food or restaurant item..." value={foodSearch}
-                onChange={function(e){setFoodSearch(e.target.value);}}
-                onKeyDown={function(e){if(e.key==="Enter")searchFoods(foodSearch);}}
+                onChange={function(e){
+                  var val=e.target.value;
+                  setFoodSearch(val);
+                  // Debounce search - fires 600ms after user stops typing
+                  clearTimeout(searchDebounceRef.current);
+                  if(val.length>=2){
+                    searchDebounceRef.current=setTimeout(function(){searchFoods(val);},600);
+                  } else {
+                    setFoodSearchResults([]);
+                  }
+                }}
+                onKeyDown={function(e){if(e.key==="Enter"){clearTimeout(searchDebounceRef.current);searchFoods(foodSearch);}}}
                 style={{flex:1}}/>
-              <button onClick={function(){searchFoods(foodSearch);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13,flexShrink:0}}>Go</button>
+              <button onClick={function(){clearTimeout(searchDebounceRef.current);searchFoods(foodSearch);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13,flexShrink:0}}>Go</button>
             </div>
             {/* Restaurant quick chips */}
             {!selSearchFood&&(<div>
@@ -3128,7 +3159,7 @@ export default function App({user,supabase}){
             {!foodSearchLoading&&foodSearch.length>1&&foodSearchResults.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>No results. Try a different term.</div>}
             {foodSearchResults.length>0&&!selSearchFood&&(<div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
               {foodSearchResults.map(function(f){return(
-                <div key={f.id} onClick={function(){setSelSearchFood(f);setSearchGrams(100);setSearchUnit("g");}}
+                <div key={f.id} onClick={function(){setSelSearchFood(f);setSearchGrams(100);setSearchUnit("serving");}}
                   style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:9}}>
                   {f.image?<img src={f.image} alt="" style={{width:36,height:36,borderRadius:7,objectFit:"contain",background:"#fff",padding:2,flexShrink:0}}/>:<div style={{width:36,height:36,borderRadius:7,background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>&#127869;</div>}
                   <div style={{flex:1,minWidth:0}}>
@@ -3152,29 +3183,27 @@ export default function App({user,supabase}){
                     </div>
                     <button onClick={function(){setSelSearchFood(null);}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:11}}>Back</button>
                   </div>
-                  {/* Smart serving size quick buttons */}
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
-                    {getServingSizes(selSearchFood).map(function(sz){
-                      var isActive=searchGrams===sz.grams&&searchUnit===sz.unit;
-                      return(<button key={sz.label} onClick={function(){setSearchGrams(sz.grams);setSearchUnit(sz.unit);}} style={{background:isActive?GC+"22":"#13131a",border:"1px solid "+(isActive?GC:"#2a2a3a"),color:isActive?GC:"#888",borderRadius:99,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:isActive?700:400}}>{sz.label}</button>);
-                    })}
+                  {/* Unit selector - Serving / g / oz */}
+                  <div style={{display:"flex",gap:6,marginBottom:10}}>
+                    {(selSearchFood.servingGrams?[["serving","Per Serving"],["g","Grams"],["oz","Oz"]]:[["g","Grams"],["oz","Oz"]]).map(function(u){return(
+                      <button key={u[0]} onClick={function(){
+                        if(u[0]==="serving"){setSearchUnit("serving");setSearchGrams(1);}
+                        else if(u[0]==="g"){var ng=searchUnit==="oz"?Math.round(searchGrams*28.35):searchUnit==="serving"?(selSearchFood.servingGrams||100):searchGrams;setSearchUnit("g");setSearchGrams(ng);}
+                        else{var no=searchUnit==="g"?Math.round(searchGrams/28.35*10)/10:searchUnit==="serving"?Math.round((selSearchFood.servingGrams||100)/28.35*10)/10:searchGrams;setSearchUnit("oz");setSearchGrams(no);}
+                      }} style={{flex:1,padding:"7px 4px",borderRadius:8,border:"1px solid "+(searchUnit===u[0]?GC:"#2a2a3a"),background:searchUnit===u[0]?GC+"22":"transparent",color:searchUnit===u[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u[1]}</button>
+                    );})}
                   </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:9,color:"#555",marginBottom:4}}>CUSTOM AMOUNT</div>
+                  {/* Amount input */}
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:9,color:"#555",marginBottom:4}}>{searchUnit==="serving"?"NUMBER OF SERVINGS":searchUnit==="g"?"AMOUNT (grams)":"AMOUNT (oz)"}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={function(){setSearchGrams(Math.max(searchUnit==="serving"?0.5:1,searchGrams-(searchUnit==="serving"?0.5:searchUnit==="oz"?0.5:5)));}} style={{background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:16}}>-</button>
                       <input className="inp" type="number" inputMode="decimal" value={searchGrams}
-                        onChange={function(e){setSearchGrams(Math.max(1,+e.target.value||1));}}
-                        style={{fontSize:20,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
+                        onChange={function(e){setSearchGrams(Math.max(0.1,+e.target.value||0.1));}}
+                        style={{flex:1,fontSize:22,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
+                      <button onClick={function(){setSearchGrams(searchGrams+(searchUnit==="serving"?0.5:searchUnit==="oz"?0.5:5));}} style={{background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:16}}>+</button>
                     </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                      {["g","oz"].map(function(u){return(
-                        <button key={u} onClick={function(){
-                          if(u===searchUnit)return;
-                          var ng=u==="oz"?Math.round(searchGrams/28.35*10)/10:Math.round(searchGrams*28.35);
-                          setSearchGrams(ng);setSearchUnit(u);
-                        }} style={{background:searchUnit===u?GC:"#1e1e2a",border:"1px solid "+(searchUnit===u?GC:"#2a2a3a"),color:searchUnit===u?"#0a0a0f":"#888",borderRadius:7,padding:"5px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>{u}</button>
-                      );})}
-                    </div>
+                    {searchUnit==="serving"&&selSearchFood.servingGrams&&<div style={{fontSize:10,color:"#555",textAlign:"center",marginTop:4}}>{selSearchFood.servingLabel} = {selSearchFood.servingGrams}g</div>}
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:10}}>
                     {[["KCAL",sm.cal,"#e8a83e"],["P",sm.protein+"g","#c8f53e"],["C",sm.carbs+"g","#e8a83e"],["F",sm.fat+"g","#3eb8f5"]].map(function(x){return(
@@ -3184,7 +3213,7 @@ export default function App({user,supabase}){
                       </div>
                     );})}
                   </div>
-                  <div style={{fontSize:9,color:"#555",textAlign:"center",marginBottom:10}}>{searchGrams}{searchUnit} of {selSearchFood.name}</div>
+                  <div style={{fontSize:9,color:"#555",textAlign:"center",marginBottom:10}}>{searchUnit==="serving"?(searchGrams===1?"1 serving":(searchGrams+" servings")):searchGrams+searchUnit} of {selSearchFood.name}</div>
                   <div style={{display:"flex",gap:4,marginBottom:4}}>
                     {["breakfast","lunch","dinner","snack","other"].map(function(t){return(
                       <button key={t} onClick={()=>setMealType(t)} style={{flex:1,padding:"4px 0",borderRadius:6,border:"1px solid "+(mealType===t?"#e8a83e":"#2a2a3a"),background:mealType===t?"#e8a83e22":"transparent",color:mealType===t?"#e8a83e":"#555",fontFamily:"inherit",fontWeight:700,fontSize:8,textTransform:"capitalize",cursor:"pointer"}}>{t}</button>
