@@ -1254,6 +1254,12 @@ export default function App({user,supabase}){
   var[feed,setFeed]=useState([]);
   var[feedLoading,setFeedLoading]=useState(false);
   var[feedComment,setFeedComment]=useState({});
+  var[challenges,setChallenges]=useState([]);
+  var[challengeLoading,setChallengeLoading]=useState(false);
+  var[showChallengeModal,setShowChallengeModal]=useState(false);
+  var[challengeTarget,setChallengeTarget]=useState(null);
+  var[challengeType,setChallengeType]=useState("streak_battle");
+  var[challengeDays,setChallengeDays]=useState(7);
   var[showComments,setShowComments]=useState({});
   var[postComments,setPostComments]=useState({});
   var[showFeedback,setShowFeedback]=useState(false);
@@ -1377,6 +1383,7 @@ export default function App({user,supabase}){
     }catch(e){console.log("Social load error:",e);}
     setSocialLoaded(true);
     loadReferralData();
+    loadChallenges();
   }
 
   // ── Referral System ──────────────────────────────────────
@@ -1452,6 +1459,74 @@ export default function App({user,supabase}){
     setFeedbackSent(true);
     setFeedbackText("");
     setTimeout(function(){setShowFeedback(false);setFeedbackSent(false);},2000);
+  }
+
+  // ── Challenges ──────────────────────────────────────────────
+  async function loadChallenges(){
+    var sb=supabase||sbClient;
+    if(!user)return;
+    try{
+      var{data:ch}=await sb.from("challenges")
+        .select("*, from_user:profiles!challenges_from_user_id_fkey(id,display_name,username,avatar_index), to_user:profiles!challenges_to_user_id_fkey(id,display_name,username,avatar_index)")
+        .or("from_user_id.eq."+user.id+",to_user_id.eq."+user.id)
+        .order("created_at",{ascending:false});
+      setChallenges(ch||[]);
+    }catch(e){console.log("Challenge load error:",e);}
+  }
+
+  async function sendChallenge(opponentId){
+    var sb=supabase||sbClient;
+    if(!user||!opponentId)return;
+    try{
+      var endsAt=new Date(Date.now()+challengeDays*86400000).toISOString();
+      var{error}=await sb.from("challenges").insert({
+        type:challengeType,
+        from_user_id:user.id,
+        to_user_id:opponentId,
+        status:"pending",
+        duration_days:challengeDays,
+        ends_at:endsAt,
+        from_progress:0,
+        to_progress:0,
+      });
+      if(error)throw error;
+      setShowChallengeModal(false);
+      setChallengeTarget(null);
+      loadChallenges();
+      alert("Challenge sent! 🔥");
+    }catch(e){alert("Error: "+e.message);}
+  }
+
+  async function respondChallenge(challengeId,accept){
+    var sb=supabase||sbClient;
+    try{
+      await sb.from("challenges").update({status:accept?"active":"declined"}).eq("id",challengeId);
+      loadChallenges();
+    }catch(e){console.log("Challenge respond error:",e);}
+  }
+
+  function getChallengeScore(ch){
+    var isFromUser=ch.from_user_id===user.id;
+    return{my:isFromUser?(ch.from_progress||0):(ch.to_progress||0),their:isFromUser?(ch.to_progress||0):(ch.from_progress||0)};
+  }
+
+  function getChallengePartner(ch){
+    return ch.from_user_id===user.id?ch.to_user:ch.from_user;
+  }
+
+  function getChallengeLabel(type){
+    var labels={"streak_battle":"🔥 Streak Battle","volume_war":"💪 Volume War","consistency":"📅 Consistency","xp_race":"⚡ XP Race"};
+    return labels[type]||type;
+  }
+
+  function getChallengeDesc(type,days){
+    var descs={"streak_battle":"Who keeps their streak longest over "+days+" days","volume_war":"Who lifts the most total weight over "+days+" days","consistency":"Who works out the most days over "+days+" days","xp_race":"Who earns the most XP over "+days+" days"};
+    return descs[type]||"";
+  }
+
+  function getDaysLeft(endsAt){
+    var diff=Math.ceil((new Date(endsAt)-new Date())/(1000*60*60*24));
+    return Math.max(0,diff);
   }
 
   // ── Activity Feed ──────────────────────────────────────────
@@ -2960,7 +3035,7 @@ export default function App({user,supabase}){
 
           {/* Sub tabs */}
           <div style={{display:"flex",gap:3,background:"#0a0a0f",borderRadius:8,padding:3}}>
-            {[["feed","Feed"],["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={function(){setSocialTab(x[0]);if(x[0]==="feed")loadFeed();}} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
+            {[["feed","Feed"],["discover","Discover"],["matches","Matches"+(matches.length>0?" ("+matches.length+")":"")],["challenges","Challenges"+(challenges.filter(function(c){return c.status==="pending"&&c.to_user_id===user.id;}).length>0?" ("+challenges.filter(function(c){return c.status==="pending"&&c.to_user_id===user.id;}).length+")":"")],["requests","Requests"+(pendingIn.length>0?" ("+pendingIn.length+")":"")]].map(function(x){return <button key={x[0]} onClick={function(){setSocialTab(x[0]);if(x[0]==="feed")loadFeed();if(x[0]==="challenges")loadChallenges();}} style={{flex:1,padding:"6px 0",borderRadius:6,border:"none",cursor:"pointer",background:socialTab===x[0]?"#1e1e2a":"transparent",color:socialTab===x[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:9,textTransform:"uppercase",transition:"all .15s"}}>{x[1]}</button>;})}
           </div>
 
           {/* FEED */}
@@ -3118,9 +3193,129 @@ export default function App({user,supabase}){
             </div>)}
             {pendingIn.length===0&&pendingOut.length===0&&<div style={{textAlign:"center",padding:"30px 0",color:"#555",fontSize:12}}>No pending requests</div>}
           </div>)}
-        </div>)}
 
+          {/* CHALLENGES */}
+          {socialTab==="challenges"&&(<div>
+            {challenges.filter(function(c){return c.status==="pending"&&c.to_user_id===user.id;}).length>0&&(<div style={{marginBottom:14}}>
+              <div style={{fontSize:9,color:GC,letterSpacing:1,marginBottom:8}}>⚡ INCOMING CHALLENGES</div>
+              {challenges.filter(function(c){return c.status==="pending"&&c.to_user_id===user.id;}).map(function(ch){
+                var partner=getChallengePartner(ch);
+                return(
+                <div key={ch.id} style={{background:"#13131a",border:"1px solid "+GC+"55",borderRadius:13,padding:"13px",marginBottom:9}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                    <div style={{fontSize:28,background:"#0a0a0f",borderRadius:"50%",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{AVATARS[partner?partner.avatar_index||0:0]}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:14}}>{partner?partner.display_name||partner.username:"User"}</div>
+                      <div style={{fontSize:12,color:GC,fontWeight:700}}>{getChallengeLabel(ch.type)}</div>
+                      <div style={{fontSize:10,color:"#555",marginTop:2}}>{getChallengeDesc(ch.type,ch.duration_days)}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>respondChallenge(ch.id,true)} style={{flex:1,background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"9px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>Accept 🔥</button>
+                    <button onClick={()=>respondChallenge(ch.id,false)} style={{flex:1,background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#888",borderRadius:9,padding:"9px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:13}}>Decline</button>
+                  </div>
+                </div>
+              );})}
+            </div>)}
+
+            {challenges.filter(function(c){return c.status==="active";}).length>0&&(<div style={{marginBottom:14}}>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:8}}>ACTIVE CHALLENGES</div>
+              {challenges.filter(function(c){return c.status==="active";}).map(function(ch){
+                var scores=getChallengeScore(ch);
+                var partner=getChallengePartner(ch);
+                var daysLeft=getDaysLeft(ch.ends_at);
+                var winning=scores.my>=scores.their;
+                return(
+                <div key={ch.id} style={{background:"#13131a",border:"1px solid "+(winning?GC+"44":"#2a2a3a"),borderRadius:13,padding:"13px",marginBottom:9}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:12,color:GC,fontWeight:700}}>{getChallengeLabel(ch.type)}</div>
+                    <div style={{fontSize:10,color:daysLeft<=2?"#ff6b35":"#555"}}>{daysLeft}d left</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                    <div style={{flex:1,textAlign:"center"}}>
+                      <div style={{fontSize:10,color:"#555",marginBottom:2}}>You</div>
+                      <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:32,color:winning?GC:"#e8e4dc",lineHeight:1}}>{scores.my}</div>
+                    </div>
+                    <div style={{fontSize:14,color:"#333",fontWeight:700}}>VS</div>
+                    <div style={{flex:1,textAlign:"center"}}>
+                      <div style={{fontSize:10,color:"#555",marginBottom:2}}>{partner?partner.display_name||partner.username:"Opponent"}</div>
+                      <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:32,color:!winning?GC:"#e8e4dc",lineHeight:1}}>{scores.their}</div>
+                    </div>
+                  </div>
+                  <div style={{background:"#0a0a0f",borderRadius:99,height:6,overflow:"hidden"}}>
+                    <div style={{height:"100%",borderRadius:99,background:GC,width:(scores.my+scores.their>0?Math.round((scores.my/(scores.my+scores.their))*100):50)+"%",transition:"width .4s"}}/>
+                  </div>
+                  <div style={{fontSize:9,color:"#555",marginTop:5,textAlign:"center"}}>{getChallengeDesc(ch.type,ch.duration_days)}</div>
+                </div>
+              );})}
+            </div>)}
+
+            {challenges.filter(function(c){return c.status==="completed";}).length>0&&(<div style={{marginBottom:14}}>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:8}}>COMPLETED</div>
+              {challenges.filter(function(c){return c.status==="completed";}).map(function(ch){
+                var scores=getChallengeScore(ch);
+                var partner=getChallengePartner(ch);
+                var won=ch.winner_id===user.id;
+                return(
+                <div key={ch.id} style={{background:"#13131a",border:"1px solid "+(won?GC+"33":"#1e1e2a"),borderRadius:13,padding:"13px",marginBottom:9,opacity:0.8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:11,color:"#888"}}>{getChallengeLabel(ch.type)}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:won?GC:"#ff6666"}}>{won?"🏆 Won":"Lost"}</div>
+                  </div>
+                  <div style={{fontSize:10,color:"#555"}}>vs {partner?partner.display_name||partner.username:"Opponent"} · {scores.my} – {scores.their}</div>
+                </div>
+              );})}
+            </div>)}
+
+            {matches.length>0&&(<div>
+              <div style={{fontSize:9,color:"#555",letterSpacing:1,marginBottom:8}}>CHALLENGE A MATCH</div>
+              {matches.map(function(m){return(
+                <div key={m.id} style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:13,padding:"11px 13px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{fontSize:24,background:"#0a0a0f",borderRadius:"50%",width:38,height:38,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{AVATARS[m.partner.avatar_index||0]}</div>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{m.partner.display_name||m.partner.username||"User"}</div></div>
+                  <button onClick={function(){setChallengeTarget(m.partner);setShowChallengeModal(true);}} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:9,padding:"7px 13px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:11}}>Challenge ⚡</button>
+                </div>
+              );})}
+            </div>)}
+
+            {challenges.length===0&&matches.length===0&&(<div style={{textAlign:"center",padding:"40px 0",color:"#555",fontSize:13}}>
+              <div style={{fontSize:36,marginBottom:10}}>⚡</div>
+              <div style={{fontWeight:700,marginBottom:6}}>No challenges yet</div>
+              <div style={{fontSize:11}}>Match with people first to challenge them</div>
+            </div>)}
+          </div>)}
+
+        </div>)}
       </div>
+
+      {/* Challenge Modal */}
+      {showChallengeModal&&challengeTarget&&(<div className="overlay" onClick={function(e){if(e.target===e.currentTarget){setShowChallengeModal(false);setChallengeTarget(null);}}}>
+        <div className="modal">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontFamily:"Bebas Neue,sans-serif",fontSize:20,letterSpacing:1}}>CHALLENGE {(challengeTarget.display_name||challengeTarget.username||"").toUpperCase()}</div>
+            <button onClick={function(){setShowChallengeModal(false);setChallengeTarget(null);}} style={{background:"#1e1e2a",border:"none",color:"#e8e4dc",borderRadius:7,padding:"4px 9px",cursor:"pointer"}}>x</button>
+          </div>
+          <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:8}}>CHALLENGE TYPE</div>
+          <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:14}}>
+            {[["streak_battle","🔥 Streak Battle","Keep your streak longest"],["volume_war","💪 Volume War","Lift the most total weight"],["consistency","📅 Consistency","Work out the most days"],["xp_race","⚡ XP Race","Earn the most XP"]].map(function(t){return(
+              <button key={t[0]} onClick={()=>setChallengeType(t[0])} style={{padding:"10px 13px",borderRadius:10,border:"1px solid "+(challengeType===t[0]?GC:"#2a2a3a"),background:challengeType===t[0]?"#151e12":"#13131a",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                <div style={{fontWeight:700,fontSize:13,color:challengeType===t[0]?GC:"#e8e4dc"}}>{t[1]}</div>
+                <div style={{fontSize:10,color:"#555",marginTop:2}}>{t[2]}</div>
+              </button>
+            );})}
+          </div>
+          <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:8}}>DURATION</div>
+          <div style={{display:"flex",gap:7,marginBottom:14}}>
+            {[7,14,30].map(function(d){return(
+              <button key={d} onClick={()=>setChallengeDays(d)} style={{flex:1,padding:"10px",borderRadius:9,border:"1px solid "+(challengeDays===d?GC:"#2a2a3a"),background:challengeDays===d?"#151e12":"#13131a",color:challengeDays===d?GC:"#888",fontFamily:"inherit",fontWeight:700,fontSize:13,cursor:"pointer"}}>{d} days</button>
+            );})}
+          </div>
+          <div style={{background:"#0a0a0f",borderRadius:9,padding:"10px 13px",marginBottom:14}}>
+            <div style={{fontSize:11,color:"#888"}}>{getChallengeDesc(challengeType,challengeDays)}</div>
+          </div>
+          <button onClick={()=>sendChallenge(challengeTarget.id)} style={{background:GC,border:"none",color:"#0a0a0f",borderRadius:11,padding:"13px",fontSize:15,fontWeight:800,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>Send Challenge 🔥</button>
+        </div>
+      </div>)}
 
       {showEx&&(<div className="overlay" onClick={function(e){if(e.target===e.currentTarget)closeEx();}}>
         <div className="modal">
