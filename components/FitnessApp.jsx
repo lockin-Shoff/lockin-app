@@ -2063,10 +2063,10 @@ export default function App({user,supabase}){
     if(!q||q.length<2){setFoodSearchResults([]);return;}
     setFoodSearchLoading(true);
 
-    // Check for restaurant match first
+    // 1. Check restaurant menus first
     var qClean=q.toLowerCase().replace(/[^a-z0-9]/g,"");
     var restaurantAliases={
-      "chickfila":["chickfila","chickfil","chick","cfa"],
+      "chickfila":["chickfila","chickfil","cfa"],
       "mcdonalds":["mcdonalds","mcdonald","mcd","mcds"],
       "chipotle":["chipotle","chipot"],
       "subway":["subway"],
@@ -2082,12 +2082,13 @@ export default function App({user,supabase}){
     });
     if(matchedKey&&RESTAURANT_MENUS[matchedKey]&&RESTAURANT_MENUS[matchedKey].length>0){
       var menuItems=RESTAURANT_MENUS[matchedKey].map(function(item){
+        var brandName=matchedKey==="chickfila"?"Chick-fil-A":matchedKey.charAt(0).toUpperCase()+matchedKey.slice(1);
         return{
-          id:item.name,name:item.name,
-          brand:matchedKey==="chickfila"?"Chick-fil-A":matchedKey.charAt(0).toUpperCase()+matchedKey.slice(1),
+          id:item.name,name:item.name,brand:brandName,image:null,
           calories:item.calories,protein:item.protein,carbs:item.carbs,fat:item.fat,
           cal100:item.calories,protein100:item.protein,carbs100:item.carbs,fat100:item.fat,
-          per:item.per,servingGrams:null,servingLabel:item.per,em:EM.plate,
+          servingCal:item.calories,servingProtein:item.protein,servingCarbs:item.carbs,servingFat:item.fat,
+          servingGrams:null,servingLabel:item.per,per:item.per,isRestaurant:true,em:EM.plate,
         };
       });
       setFoodSearchResults(menuItems);
@@ -2095,8 +2096,54 @@ export default function App({user,supabase}){
       return;
     }
 
+    // 2. Try USDA FoodData Central first (best accuracy + serving sizes)
     try{
-      // Search with more results and better fields
+      var usdaKey=process.env.NEXT_PUBLIC_USDA_API_KEY||"PB26gsKAGOvPEGMk8xVMeikXSwW9lfHpAvofG47u";
+      var usdaUrl="https://api.nal.usda.gov/fdc/v1/foods/search?query="+encodeURIComponent(q)+"&pageSize=20&dataType=Survey%20(FNDDS),SR%20Legacy,Branded&api_key="+usdaKey;
+      var usdaRes=await fetch(usdaUrl);
+      var usdaData=await usdaRes.json();
+      var usdaResults=(usdaData.foods||[]).map(function(f){
+        var nutrients=f.foodNutrients||[];
+        function getNut(name){
+          var n=nutrients.find(function(x){return x.nutrientName&&x.nutrientName.toLowerCase().includes(name.toLowerCase());});
+          return n?n.value||0:0;
+        }
+        var cal=getNut("Energy")||getNut("energy")||0;
+        // Prefer kcal not kJ
+        var calNut=nutrients.find(function(x){return x.nutrientName&&(x.nutrientName==="Energy"||x.nutrientName==="Energy (Atwater General Factors)")&&x.unitName==="KCAL";});
+        if(calNut)cal=calNut.value||0;
+        var protein=getNut("Protein");
+        var carbs=getNut("Carbohydrate");
+        var fat=getNut("Total lipid");
+        // Serving size from USDA
+        var servingSize=f.servingSize||null;
+        var servingUnit=f.servingSizeUnit||"g";
+        var servingGrams=servingSize&&servingUnit.toLowerCase()==="g"?servingSize:null;
+        var servingLabel=servingSize?(servingSize+" "+(f.householdServingFullText||servingUnit)):null;
+        // For USDA branded foods, nutrients are per 100g so calculate per serving
+        var servingCal=servingGrams?Math.round(cal*(servingGrams/100)):null;
+        var servingProtein=servingGrams?Math.round(protein*(servingGrams/100)*10)/10:null;
+        var servingCarbs=servingGrams?Math.round(carbs*(servingGrams/100)*10)/10:null;
+        var servingFat=servingGrams?Math.round(fat*(servingGrams/100)*10)/10:null;
+        return{
+          id:"usda_"+f.fdcId,name:f.description,brand:f.brandOwner||f.brandName||"",image:null,
+          cal100:Math.round(cal),protein100:Math.round(protein*10)/10,
+          carbs100:Math.round(carbs*10)/10,fat100:Math.round(fat*10)/10,
+          servingGrams:servingGrams,servingLabel:servingLabel||(f.householdServingFullText||""),
+          servingCal:servingCal,servingProtein:servingProtein,
+          servingCarbs:servingCarbs,servingFat:servingFat,
+          score:0,source:"usda",
+        };
+      }).filter(function(f){return f.cal100>0&&f.name;}).slice(0,15);
+      if(usdaResults.length>0){
+        setFoodSearchResults(usdaResults);
+        setFoodSearchLoading(false);
+        return;
+      }
+    }catch(e){console.log("USDA error:",e);}
+
+    // 3. Fallback: Open Food Facts
+    try{
       var url="https://world.openfoodfacts.org/cgi/search.pl?search_terms="+encodeURIComponent(q)+"&search_simple=1&action=process&json=1&page_size=24&fields=product_name,brands,nutriments,serving_size,image_front_small_url,_id,countries_tags,popularity_key";
       var res=await fetch(url);
       var data=await res.json();
@@ -2112,25 +2159,22 @@ export default function App({user,supabase}){
         else if(nl.includes(ql))score+=30;
         if(p.countries_tags&&p.countries_tags.includes("en:united-states"))score+=20;
         if(p.popularity_key)score+=Math.min(p.popularity_key/1000000,10);
-        if(!n["proteins_100g"]&&!n["carbohydrates_100g"])score-=20;
-        // Parse serving size from API
         var servingStr=p.serving_size||"";
         var servingGrams=null;
         var servingMatch=servingStr.match(/([\d.]+)\s*g/i);
         if(servingMatch)servingGrams=parseFloat(servingMatch[1]);
-        var calServing=servingGrams?Math.round(n["energy-kcal_serving"]||n["energy-kcal_100g"]*(servingGrams/100)||0):null;
-        var pServing=servingGrams?Math.round((n["proteins_serving"]||n["proteins_100g"]*(servingGrams/100)||0)*10)/10:null;
-        var cServing=servingGrams?Math.round((n["carbohydrates_serving"]||n["carbohydrates_100g"]*(servingGrams/100)||0)*10)/10:null;
-        var fServing=servingGrams?Math.round((n["fat_serving"]||n["fat_100g"]*(servingGrams/100)||0)*10)/10:null;
+        var servingCal=servingGrams?Math.round(n["energy-kcal_serving"]||cal*(servingGrams/100)||0):null;
+        var servingProtein=servingGrams?Math.round((n["proteins_serving"]||n["proteins_100g"]*(servingGrams/100)||0)*10)/10:null;
+        var servingCarbs=servingGrams?Math.round((n["carbohydrates_serving"]||n["carbohydrates_100g"]*(servingGrams/100)||0)*10)/10:null;
+        var servingFat=servingGrams?Math.round((n["fat_serving"]||n["fat_100g"]*(servingGrams/100)||0)*10)/10:null;
         return{id:p._id,name:name,brand:p.brands||"",image:p.image_front_small_url||null,
-          cal100:cal,
-          protein100:Math.round((n["proteins_100g"]||0)*10)/10,
+          cal100:cal,protein100:Math.round((n["proteins_100g"]||0)*10)/10,
           carbs100:Math.round((n["carbohydrates_100g"]||0)*10)/10,
           fat100:Math.round((n["fat_100g"]||0)*10)/10,
-          servingGrams:servingGrams,
-          servingLabel:servingStr||"1 serving",
-          calServing:calServing,pServing:pServing,cServing:cServing,fServing:fServing,
-          score:score};
+          servingGrams:servingGrams,servingLabel:servingStr||"",
+          servingCal:servingCal,servingProtein:servingProtein,
+          servingCarbs:servingCarbs,servingFat:servingFat,
+          score:score,source:"off"};
       }).filter(function(p){return p.cal100>0;})
         .sort(function(a,b){return b.score-a.score;})
         .slice(0,15);
@@ -2140,17 +2184,22 @@ export default function App({user,supabase}){
   }
 
   function calcSearchMacros(food,grams,unit){
-    // If serving unit and food has serving data, use it directly
-    if(unit==="serving"&&food.servingGrams){
-      var ratio2=grams; // grams = number of servings in serving mode
-      return{
-        cal:Math.round((food.calServing||food.cal100*(food.servingGrams/100))*ratio2),
-        protein:Math.round((food.pServing||food.protein100*(food.servingGrams/100))*ratio2*10)/10,
-        carbs:Math.round((food.cServing||food.carbs100*(food.servingGrams/100))*ratio2*10)/10,
-        fat:Math.round((food.fServing||food.fat100*(food.servingGrams/100))*ratio2*10)/10,
-      };
+    // Restaurant items: always use their direct calorie values per serving
+    if(food.isRestaurant){
+      return{cal:Math.round(food.calories*grams),protein:Math.round(food.protein*grams*10)/10,
+        carbs:Math.round(food.carbs*grams*10)/10,fat:Math.round(food.fat*grams*10)/10};
     }
-    var g=unit==="oz"?grams*28.3495:unit==="serving"?grams*100:grams;
+    // Per serving mode
+    if(unit==="serving"&&food.servingGrams){
+      var srv=food.servingCal!=null?food.servingCal:Math.round(food.cal100*(food.servingGrams/100));
+      var srvP=food.servingProtein!=null?food.servingProtein:Math.round(food.protein100*(food.servingGrams/100)*10)/10;
+      var srvC=food.servingCarbs!=null?food.servingCarbs:Math.round(food.carbs100*(food.servingGrams/100)*10)/10;
+      var srvF=food.servingFat!=null?food.servingFat:Math.round(food.fat100*(food.servingGrams/100)*10)/10;
+      return{cal:Math.round(srv*grams),protein:Math.round(srvP*grams*10)/10,
+        carbs:Math.round(srvC*grams*10)/10,fat:Math.round(srvF*grams*10)/10};
+    }
+    // Per grams or oz mode
+    var g=unit==="oz"?grams*28.3495:unit==="serving"?grams*(food.servingGrams||100):grams;
     var ratio=g/100;
     return{cal:Math.round(food.cal100*ratio),protein:Math.round(food.protein100*ratio*10)/10,
       carbs:Math.round(food.carbs100*ratio*10)/10,fat:Math.round(food.fat100*ratio*10)/10};
@@ -3476,16 +3525,19 @@ export default function App({user,supabase}){
             {foodSearchLoading&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>Searching...</div>}
             {!foodSearchLoading&&foodSearch.length>1&&foodSearchResults.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>No results. Try a different term.</div>}
             {foodSearchResults.length>0&&!selSearchFood&&(<div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
-              {foodSearchResults.map(function(f){return(
-                <div key={f.id} onClick={function(){setSelSearchFood(f);setSearchGrams(100);setSearchUnit("serving");}}
+              {foodSearchResults.map(function(f){
+                var displayCal=f.isRestaurant?f.calories:(f.servingCal||f.cal100);
+                var displayLabel=f.isRestaurant?f.per:(f.servingLabel||(f.servingGrams?f.servingGrams+"g":"100g"));
+                return(
+                <div key={f.id} onClick={function(){setSelSearchFood(f);setSearchGrams(f.servingGrams||f.isRestaurant?1:100);setSearchUnit(f.servingGrams||f.isRestaurant?"serving":"g");}}
                   style={{background:"#13131a",border:"1px solid #1e1e2a",borderRadius:11,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:9}}>
                   {f.image?<img src={f.image} alt="" style={{width:36,height:36,borderRadius:7,objectFit:"contain",background:"#fff",padding:2,flexShrink:0}}/>:<div style={{width:36,height:36,borderRadius:7,background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>&#127869;</div>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:600,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
                     {f.brand&&<div style={{fontSize:10,color:"#555"}}>{f.brand}</div>}
-                    <div style={{fontSize:9,color:"#888",marginTop:2}}>per 100g: {f.cal100} kcal &middot; P:{f.protein100}g &middot; C:{f.carbs100}g &middot; F:{f.fat100}g</div>
+                    <div style={{fontSize:9,color:"#888",marginTop:2}}>P:{f.isRestaurant?f.protein:(f.servingGrams?f.servingProtein||Math.round(f.protein100*(f.servingGrams/100)*10)/10:f.protein100)}g · C:{f.isRestaurant?f.carbs:(f.servingGrams?f.servingCarbs||Math.round(f.carbs100*(f.servingGrams/100)*10)/10:f.carbs100)}g · F:{f.isRestaurant?f.fat:(f.servingGrams?f.servingFat||Math.round(f.fat100*(f.servingGrams/100)*10)/10:f.fat100)}g</div>
                   </div>
-                  <div style={{fontSize:10,fontWeight:700,color:"#e8a83e",flexShrink:0,textAlign:"right"}}>{f.cal100}<br/><span style={{fontSize:8,color:"#555",fontWeight:400}}>kcal/100g</span></div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#e8a83e",flexShrink:0,textAlign:"right"}}>{displayCal}<br/><span style={{fontSize:8,color:"#555",fontWeight:400}}>{displayLabel?("per "+displayLabel):"kcal"}</span></div>
                 </div>
               );})}
             </div>)}
@@ -3501,9 +3553,9 @@ export default function App({user,supabase}){
                     </div>
                     <button onClick={function(){setSelSearchFood(null);}} style={{background:"#1e1e2a",border:"none",color:"#888",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontSize:11}}>Back</button>
                   </div>
-                  {/* Unit selector - Serving / g / oz */}
+                  {/* Unit selector */}
                   <div style={{display:"flex",gap:6,marginBottom:10}}>
-                    {(selSearchFood.servingGrams?[["serving","Per Serving"],["g","Grams"],["oz","Oz"]]:[["g","Grams"],["oz","Oz"]]).map(function(u){return(
+                    {((selSearchFood.servingGrams||selSearchFood.isRestaurant)?[["serving","Per Serving"],["g","Grams"],["oz","Oz"]]:[["g","Grams"],["oz","Oz"]]).map(function(u){return(
                       <button key={u[0]} onClick={function(){
                         if(u[0]==="serving"){setSearchUnit("serving");setSearchGrams(1);}
                         else if(u[0]==="g"){var ng=searchUnit==="oz"?Math.round(searchGrams*28.35):searchUnit==="serving"?(selSearchFood.servingGrams||100):searchGrams;setSearchUnit("g");setSearchGrams(ng);}
@@ -3511,18 +3563,37 @@ export default function App({user,supabase}){
                       }} style={{flex:1,padding:"7px 4px",borderRadius:8,border:"1px solid "+(searchUnit===u[0]?GC:"#2a2a3a"),background:searchUnit===u[0]?GC+"22":"transparent",color:searchUnit===u[0]?GC:"#555",fontFamily:"inherit",fontWeight:700,fontSize:11,cursor:"pointer"}}>{u[1]}</button>
                     );})}
                   </div>
-                  {/* Amount input */}
                   <div style={{marginBottom:10}}>
                     <div style={{fontSize:9,color:"#555",marginBottom:4}}>{searchUnit==="serving"?"NUMBER OF SERVINGS":searchUnit==="g"?"AMOUNT (grams)":"AMOUNT (oz)"}</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <button onClick={function(){setSearchGrams(Math.max(searchUnit==="serving"?0.5:1,searchGrams-(searchUnit==="serving"?0.5:searchUnit==="oz"?0.5:5)));}} style={{background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:16}}>-</button>
-                      <input className="inp" type="number" inputMode="decimal" value={searchGrams}
-                        onChange={function(e){setSearchGrams(Math.max(0.1,+e.target.value||0.1));}}
-                        style={{flex:1,fontSize:22,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
+                      <input className="inp" type="number" inputMode="decimal" value={searchGrams} onChange={function(e){setSearchGrams(Math.max(0.1,+e.target.value||0.1));}} style={{flex:1,fontSize:22,fontWeight:700,textAlign:"center",padding:"8px",borderColor:GC}}/>
                       <button onClick={function(){setSearchGrams(searchGrams+(searchUnit==="serving"?0.5:searchUnit==="oz"?0.5:5));}} style={{background:"#1e1e2a",border:"1px solid #2a2a3a",color:"#e8e4dc",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:16}}>+</button>
                     </div>
-                    {searchUnit==="serving"&&selSearchFood.servingGrams&&<div style={{fontSize:10,color:"#555",textAlign:"center",marginTop:4}}>{selSearchFood.servingLabel} = {selSearchFood.servingGrams}g</div>}
+                    {searchUnit==="serving"&&(selSearchFood.servingGrams||selSearchFood.isRestaurant)&&<div style={{fontSize:10,color:"#555",textAlign:"center",marginTop:4}}>{selSearchFood.isRestaurant?("1 "+selSearchFood.per):(selSearchFood.servingLabel+(selSearchFood.servingGrams?" = "+selSearchFood.servingGrams+"g":""))}</div>}
                   </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:10}}>
                     {[["KCAL",sm.cal,"#e8a83e"],["P",sm.protein+"g","#c8f53e"],["C",sm.carbs+"g","#e8a83e"],["F",sm.fat+"g","#3eb8f5"]].map(function(x){return(
                       <div key={x[0]} style={{background:"#13131a",borderRadius:8,padding:"8px",textAlign:"center"}}>
